@@ -17,6 +17,7 @@ PWM用のピン(GPIO 12,13,18)は、使用できなくなります。
 ※ pigpiodをデフォルト(クロック=PCM)で立ち上げると不安定になる??
 
 
+
 ## Comands
 
 ### pigpiod
@@ -26,14 +27,23 @@ PWM用のピン(GPIO 12,13,18)は、使用できなくなります。
 ```bash
 $ sudo pigpiod -t 0
 ```
-オプション「-t 0」は必須です。
+オプション「-t 0」がないと、不安定になる(?)
 
 自動起動する場合は、crontabを設定。(crontab.sample参照)
+
 
 ### IrAnalyze.py -- 赤外線信号受信・解析
 
 赤外線信号を受信して解析結果を表示する。
-詳細な情報を /tmp/ir_json.dump に保存(追記)する。
+
+詳細な解析結果情報を
+/tmp/ir_dump.irconf
+に保存(追記)する。
+(このファイルは設定ファイルとして利用可)
+
+最新の受信データ(補正しない生のパルス情報)を
+/tmp/pulse_space.txt
+に保存する。
 
 ```
 Usage: IrAnalyze.py [OPTIONS] [PIN]
@@ -45,7 +55,8 @@ Options:
   -h, --help   Show this message and exit.
 ```
 
-### 1.2 IrSend.py -- 赤外線信号送信
+
+### IrSend.py -- 赤外線信号送信
 
 デバイス名とボタン名を指定して、赤外線信号を送信する。
 デバイス名・ボタンの設定は後述
@@ -63,13 +74,23 @@ Options:
   -h, --help            Show this message and exit.
 ```
 
+
 ## *.irconf -- 設定ファイル
+
+### 検索パス
+
+1. カレントディレクトリ
+2. ${HOME}/.irconf.d
+3. /etc/irconf.d
+
 
 ### 書式 -- JSON
 
 下記の例のような書式の JSONフォーマット・ファイルを作成する。
 
-ファイル名は任意(検索パスの全ファイルを読み込み、"dev_name"で検索される)。
+検索パスの全irconfファイルが読み込まれる。
+
+拡張子は「.irconf」。これ以外のファイルは無視される。
 
 * example 1
 ```
@@ -131,18 +152,6 @@ Options:
 }
 ```
 
-### 拡張子
-
-「.irconf」
-
-これ以外の拡張子だと無視される。
-
-
-### 検索パス
-
-1. カレントディレクトリ
-2. ${HOME}/.irconf.d
-3. /etc/irconf.d
 
 
 ## References

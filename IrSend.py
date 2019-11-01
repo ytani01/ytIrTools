@@ -9,6 +9,7 @@ IrSend.py
 __author__ = 'Yoichi Tanibayashi'
 __date__   = '2019'
 
+
 from IrConfig import IrConfig
 import pigpio
 import time
@@ -296,7 +297,7 @@ import queue
 class App:
     MSG_LIST        = '__list__'
     MSG_SLEEP       = '__sleep__'
-    MSG_END         = ''
+    MSG_END         = '__end__'
 
     def __init__(self, args, n, interval, pin, debug=False):
         self.debug = debug
@@ -320,6 +321,122 @@ class App:
         self.th_worker = threading.Thread(target=self.worker)
         self.th_worker.start()
 
+    def main(self):
+        self.logger.debug('')
+
+        if self.dev_name == '':
+            msg = [self.MSG_LIST, '']
+            self.logger.debug('msg=%s', msg)
+            self.msgq.put(msg)
+            self.end_main()
+            return
+
+        print('dev: %s' % self.dev_name)
+
+        if len(self.buttons) == 0:
+            msg = [self.dev_name, self.MSG_LIST]
+            self.logger.debug('msg=%s', msg)
+            self.msgq.put(msg)
+            self.end_main()
+            return
+            
+        for i in range(self.n):
+            if self.n > 1:
+                print('[%d]' % (i + 1))
+
+            for b in self.buttons:
+                print('  button: %s' % b)
+                msg = [self.dev_name, b]
+                self.logger.debug('msg=%s', msg)
+                self.msgq.put([self.dev_name, b])
+                if self.interval > 0:
+                    print('   sleep: %.1f sec' % self.interval)
+                    self.msgq.put([self.MSG_SLEEP, self.interval])
+
+        self.end_main()
+
+    def end_main(self):
+        self.logger.debug('')
+
+        self.msgq.put([self.MSG_END, ''])
+        self.logger.debug('join()')
+        self.th_worker.join()
+
+    def worker(self):
+        """
+        サブスレッド
+
+        メッセージキューからメッセージ ``msg``を受け取って処理する
+
+        メッセージフォーマット
+        ----------------------
+          [dev_name, button_name]: 赤外線信号送信
+          [MSG_SLEEP, sleep_sec]:  スリープ
+          [MSG_LIST, '']:          デバイス名リスト
+          [dev_name, MSG_LIST]:    ボタン名リスト
+          [MSG_END, '']:           終了
+
+        """
+        self.logger.debug('')
+
+        while True:
+            msg = self.msgq.get()
+            self.logger.debug('msg=%s', msg)
+
+            (dev_name, button_name) = msg
+
+            if dev_name == self.MSG_END:
+                self.logger.debug('msg:MSG_END')
+                break
+
+            if dev_name == self.MSG_SLEEP:
+                self.logger.debug('msg:[MSG_SLEEP, %s]', button_name)
+                time.sleep(int(button_name))
+                continue
+
+            if dev_name == self.MSG_LIST:
+                self.logger.debug('msg:MSG_LIST')
+                # show device list
+                self.show_dev_list()
+                break
+
+            if button_name == self.MSG_LIST:
+                self.logger.debug('msg:[%s, MSG_LIST]', dev_name)
+                # show button list
+                self.show_button_list(dev_name)
+                break
+
+            if not self.irsend.send(dev_name, button_name):
+                self.logger.error('%s,%s: sending failed',
+                                  dev_name, button_name)
+            time.sleep(0.1)
+
+        self.logger.debug('done')
+
+    def end(self):
+        """
+        終了処理(強制終了)
+
+        メッセージキューに残っている場合は、全て捨ててから、
+        ``MSG_END``を格納して、``th_worker``スレッドが終了するの待つ。
+
+        """
+        self.logger.debug('')
+
+        if self.th_worker.is_alive():
+            count = 0
+            while not self.msgq.empty():
+                count += 1
+                self.logger.debug('msgq.get()[%d]', count)
+                self.msgq.get()
+            self.msgq.put([self.MSG_END, ''])
+            self.logger.debug('join()')
+            self.th_worker.join()
+
+        self.irsend.end()
+        print('done')
+        self.logger.debug('done')
+
     def show_dev_list(self):
         self.logger.debug('')
 
@@ -335,7 +452,7 @@ class App:
             return
         print()
 
-        macro   = dev['data']['macro']
+        macro = dev['data']['macro']
         for m in macro:
             if macro[m] != '':
                 print(' %-17s : %s' % (m, macro[m]))
@@ -346,85 +463,6 @@ class App:
             if buttons[b] != '':
                 print(' %-17s : %s' % (b, buttons[b]))
         print()
-
-    def worker(self):
-        """
-        サブスレッド
-
-        メッセージキューからメッセージ ``msg``を受け取って処理する
-
-        メッセージフォーマット
-        ----------------------
-          [dev_name, button_name]: 赤外線信号送信
-          [MSG_SLEEP, sleep_sec]:  スリープ
-          [MSG_LIST, '']:          デバイス名リスト
-          [dev_name, MSG_LIST]:    ボタン名リスト
-
-        """
-        self.logger.debug('')
-
-        while True:
-            msg = self.msgq.get()
-            self.logger.debug('msg=%s', msg)
-            if msg == self.MSG_END:
-                break
-
-            (dev_name, button_name) = msg
-            if dev_name == self.MSG_SLEEP:
-                time.sleep(int(button_name))
-                continue
-
-            if dev_name == self.MSG_LIST:
-                # show device list
-                self.show_dev_list()
-                break
-
-            if button_name == self.MSG_LIST:
-                # show button list
-                self.show_button_list(dev_name)
-                break
-
-            if not self.irsend.send(dev_name, button_name):
-                self.logger.error('%s,%s: sending failed',
-                                  dev_name, button_name)
-            time.sleep(0.1)
-
-        self.logger.debug('done')
-
-    def main(self):
-        self.logger.debug('')
-
-        if self.dev_name == '':
-            self.msgq.put([self.MSG_LIST, ''])
-            return
-
-        print('dev: %s' % self.dev_name)
-        for i in range(self.n):
-            if self.n > 1:
-                print('[%d]' % (i + 1))
-
-            if len(self.buttons) == 0:
-                self.msgq.put([self.dev_name, self.MSG_LIST])
-                break
-
-            for b in self.buttons:
-                print('  button: %s' % b)
-                self.msgq.put([self.dev_name, b])
-                if self.interval > 0:
-                    print('   sleep: %.1f sec' % self.interval)
-                    self.msgq.put([self.MSG_SLEEP, self.interval])
-
-    def end(self):
-        self.logger.debug('')
-
-        if self.th_worker.is_alive():
-            self.msgq.put(self.MSG_END)
-            self.logger.debug('join()')
-            self.th_worker.join()
-
-        self.irsend.end()
-        print('done')
-        self.logger.debug('done')
 
 
 #####
