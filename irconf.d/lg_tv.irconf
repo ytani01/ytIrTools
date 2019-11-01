@@ -1,0 +1,77 @@
+{
+  "comment": "LG TV",
+  "dev_name": ["lg_tv", "tv"],
+  "format":   "NEC",
+  "T":        565,
+  "sym_tbl": {
+    "-":      [[16, 8]],
+    "=":      [],
+    "0":      [[1, 1]],
+    "1":      [[1, 3]],
+    "/":      [[1, 74], [1, 175], [1, 915]],
+    "*":      [[16, 4]],
+    "?":      []
+  },
+  "macro": {
+    "[prefix]": "-20DF",
+    "[suffix]": "/*/*/",
+    "[end of macro]": ""
+  },
+  "buttons": {
+    "template":  "[prefix]  [suffix]",
+    
+    "power":     "[prefix] 10EF [suffix]",
+    "on":        "[prefix] 23DC [suffix]",
+    "off":       "[prefix] A35C [suffix]",
+    "disp":      "[prefix] 35CA [suffix]",
+
+    "home":      "[prefix] 3EC1 [suffix]",
+    "ok":        "[prefix] 22DD [suffix]",
+    "back":      "[prefix] 14EB [suffix]",
+    "end":       "[prefix] DA25 [suffix]",
+
+    "left":      "[prefix] E01F [suffix]",
+    "right":     "[prefix] 609F [suffix]",
+    "up":        "[prefix] 02FD [suffix]",
+    "down":      "[prefix] 827D [suffix]",
+
+    "vol_up":    "[prefix] 40BF [suffix]",
+    "vol_down":  "[prefix] C03F [suffix]",
+    "vol_down2": "[prefix] CE31 [suffix]",
+    "mute":      "[prefix] 906F [suffix]",
+    
+    "input":     "[prefix] D02F [suffix]",
+
+    "dtv":       "[prefix] DB0C [suffix]",
+    "bs":        "[prefix] DB00 [suffix]",
+    "cs1":       "[prefix] DB08 [suffix]",
+    "cs2":       "[prefix] DB04 [suffix]",
+    "hdmi1":     "[prefix] 738C [suffix]",
+    "hdmi2":     "[prefix] 33CC [suffix]",
+    "hdmi3":     "[prefix] 9768 [suffix]",
+
+    "ch_01":     "[prefix] DB8C [suffix]",
+    "ch_02":     "[prefix] DB4C [suffix]",
+    "ch_03":     "[prefix] DBCC [suffix]",
+    "ch_04":     "[prefix] DB2C [suffix]",
+    "ch_05":     "[prefix] DBAC [suffix]",
+    "ch_06":     "[prefix] DB6C [suffix]",
+    "ch_07":     "[prefix] DBEC [suffix]",
+    "ch_08":     "[prefix] DB1C [suffix]",
+    "ch_09":     "[prefix] DB9C [suffix]",
+    "ch_10":     "[prefix] DB5C [suffix]",
+    "ch_11":     "[prefix] DBDC [suffix]",
+    "ch_12":     "[prefix] DB3C [suffix]",
+
+    "ch_next":   "[prefix] 00FF [suffix]",
+    "ch_prev":   "[prefix] 807F [suffix]",
+
+    "settings":  "[prefix] C23D [suffix]",
+    "q_menu":    "[prefix] A25D [suffix]",
+    "my_app":    "[prefix] 42BD [suffix]",
+    "guide":     "[prefix] D52A [suffix]",
+    "viewsize":  "[prefix] 9E61 [suffix]",
+
+    "end of buttons": ""
+  }
+}

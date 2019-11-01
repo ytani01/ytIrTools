@@ -1,0 +1,51 @@
+{
+  "comment": "Dyson Hot + Cool AM05",
+  "dev_name": ["dyson_am05", "dyson_fan", "fan"],
+  "format":   "DYSON",
+  "T":        785.076923,
+  "sym_tbl": {
+    "-":      [[3, 1]],
+    "=":      [],
+    "0":      [[1, 1]],
+    "1":      [[1, 2]],
+    "/":      [[1, 515], [1, 697]],
+    "*":      [],
+    "?":      []
+  },
+  "macro": {
+    "[prefix]":  "-(0b)1001000",
+
+    "[suffix0]": "(0b)00 /",
+    "[suffix1]": "(0b)01 /",
+    "[suffix2]": "(0b)10 /",
+    
+    "[end of macro]": ""
+  },
+  "buttons": {
+    "power0":     "[prefix] 000000 [suffix0]",
+    "power1":     "[prefix] 000000 [suffix1]",
+    "power2":     "[prefix] 000000 [suffix2]",
+
+    "temp_up0":   "[prefix] 011110 [suffix0]",
+    "temp_up1":   "[prefix] 011110 [suffix1]",
+    "temp_up2":   "[prefix] 011110 [suffix2]",
+
+    "temp_down0": "[prefix] 110011 [suffix0]",
+    "temp_down1": "[prefix] 110011 [suffix1]",
+    "temp_down2": "[prefix] 110011 [suffix2]",
+
+    "fan_up0":    "[prefix] 010101 [suffix0]",
+    "fan_up1":    "[prefix] 010101 [suffix1]",
+    "fan_up2":    "[prefix] 010101 [suffix2]",
+
+    "fan_down0":  "[prefix] 111111 [suffix0]",
+    "fan_down1":  "[prefix] 111111 [suffix1]",
+    "fan_down2":  "[prefix] 111111 [suffix2]",
+
+    "turn0":      "[prefix] 101010 [suffix0]",
+    "turn1":      "[prefix] 101010 [suffix1]",
+    "turn2":      "[prefix] 101010 [suffix2]",
+    
+    "end of buttons": ""
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "comment": "candle",
+  "dev_name": ["candle"],
+  "format":   "NEC",
+  "T":        579.812500,
+  "sym_tbl": {
+    "-":      [[16, 8]],
+    "=":      [],
+    "0":      [[1, 1]],
+    "1":      [[1, 3]],
+    "/":      [[1, 68], [1, 1865]],
+    "*":      [[16, 4]],
+    "?":      []
+  },
+  "macro": {
+    "[prefix]": "-00FF",
+    "[suffix]": "/*/",
+    "[eom]": ""
+  },
+  "buttons": {
+    "template": "[prefix]  [suffix]",
+    "on":  "[prefix] 629D [suffix]",
+    "off": "[prefix] A857 [suffix]",
+    "eob": ""
+  }
+}

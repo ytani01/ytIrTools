@@ -1,0 +1,83 @@
+{
+  "comment": "Sharp light",
+  "dev_name": ["sharp_light", "light"],
+  "format":   "AEHA",
+  "T":        445.487500,
+  "sym_tbl": {
+    "-":      [[9, 4]],
+    "=":      [],
+    "0":      [[1, 1]],
+    "1":      [[1, 3]],
+    "/":      [[1, 1590]],
+    "*":      [],
+    "?":      []
+  },
+  "macro": {
+    "[prefix]": "- 555A F368 ",
+    "[const]":  "84 8",
+    "[b01]":    "8",
+    "[b02]":    "2",
+    "[b03]":    "E",
+    "[b04]":    "5",
+    "[b05]":    "B",
+    "[b06]":    "0",
+    "[b07]":    "C",
+    "[b08]":    "6",
+    "[b09]":    "9",
+    "[b10]":    "3",
+    "[end of macro]":""
+  },
+  "buttons": {
+    "on":             "[prefix] 0     0 A0 [const] 3 /",
+    "off":            "[prefix] 0     0 40 [const] D /",
+    "full":           "[prefix] 0     0 80 [const] 1 /",
+
+    "night":          "[prefix] A     0 A8 [const] 1 /",
+
+    "color01":        "[prefix] 8     0 B9 [const] 3 /",
+    "color02":        "[prefix] 4     0 B9 [const] F /",
+    "color03":        "[prefix] C     0 B9 [const] 7 /",
+    "color04":        "[prefix] 2     0 B9 [const] 9 /",
+    "color05":        "[prefix] A     0 B9 [const] 1 /",
+    "color06":        "[prefix] 6     0 B9 [const] D /",
+    "color07":        "[prefix] E     0 B9 [const] 5 /",
+    "color08":        "[prefix] 1     0 B9 [const] A /",
+    "color09":        "[prefix] 9     0 B9 [const] 2 /",
+    "color10":        "[prefix] 5     0 B9 [const] E /",
+
+    "level01":        "[prefix] [b01] 0 D4 [const] 8 /",
+    "level02":        "[prefix] [b02] 0 D4 [const] 2 /",
+    "level03":        "[prefix] [b03] 0 D4 [const] E /",
+    "level04":        "[prefix] [b04] 0 D4 [const] 5 /",
+    "level05":        "[prefix] [b05] 0 D4 [const] B /",
+    "level06":        "[prefix] [b06] 8 D4 [const] 8 /",
+    "level07":        "[prefix] [b07] 8 D4 [const] 4 /",
+    "level08":        "[prefix] [b08] 8 D4 [const] E /",
+    "level09":        "[prefix] [b09] 8 D4 [const] 1 /",
+    "level10":        "[prefix] [b10] 8 D4 [const] B /",
+
+    "yaezakura01":    "[prefix] [b01] 1 A5 [const] F /",
+    "yaezakura02":    "[prefix] [b02] 1 A5 [const] 5 /",
+    "yaezakura03":    "[prefix] [b03] 1 A5 [const] 9 /",
+    "yaezakura04":    "[prefix] [b04] 1 A5 [const] 2 /",
+    "yaezakura05":    "[prefix] [b05] 1 A5 [const] C /",
+    "yaezakura06":    "[prefix] [b06] 9 A5 [const] F /",
+    "yaezakura07":    "[prefix] [b07] 9 A5 [const] 3 /",
+    "yaezakura08":    "[prefix] [b08] 9 A5 [const] 9 /",
+    "yaezakura09":    "[prefix] [b09] 9 A5 [const] 6 /",
+    "yaezakura10":    "[prefix] [b10] 9 A5 [const] C /",
+
+    "someiyoshino01": "[prefix] [b01] 1 65 [const] 3 /",
+    "someiyoshino02": "[prefix] [b02] 1 65 [const] 9 /",
+    "someiyoshino03": "[prefix] [b03] 1 65 [const] 5 /",
+    "someiyoshino04": "[prefix] [b04] 1 65 [const] E /",
+    "someiyoshino05": "[prefix] [b05] 1 65 [const] 0 /",
+    "someiyoshino06": "[prefix] [b06] 9 65 [const] 3 /",
+    "someiyoshino07": "[prefix] [b07] 9 65 [const] F /",
+    "someiyoshino08": "[prefix] [b08] 9 65 [const] 5 /",
+    "someiyoshino09": "[prefix] [b09] 9 65 [const] A /",
+    "someiyoshino10": "[prefix] [b10] 9 65 [const] 0 /",
+
+    "end of buttons":""
+  }
+}
