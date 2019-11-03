@@ -55,6 +55,15 @@ class IrConfig:
     }
     """
     HEADER_BIN   = '(0b)'
+
+    SYM_TBL      = {'-': 'leader',
+                    '=': 'leader2',
+                    '0': 'zero',
+                    '1': 'one',
+                    '/': 'trailer',
+                    '*': 'repeat',
+                    '?': 'unknonw'}
+    
     CONF_SUFFIX  = '.irconf'
     DEF_CONF_DIR = ['.',
                     str(Path.home()) + '/.irconf.d',
@@ -78,6 +87,102 @@ class IrConfig:
 
         if load_all:
             self.load_all()
+
+    def button_data2syms(self, dev_data, button_data):
+        """
+        ボタン情報 ``button_data`` を信号シンボル文字列 ``syms`` に変換。
+
+        Parameters
+        ----------
+        dev_data: dict
+
+        button_data: str
+          '[prefix] 01 23 [suffix]'
+
+        Returns
+        -------
+        syms: str
+        """
+        self.logger.debug('dev_data=%s, button_data=%s', dev_data, button_data)
+
+        if button_data == '':
+            self.logger.error('no button_data')
+            return ''
+        
+        #
+        # 繰り返し回数展開
+        #
+        s1 = ''
+        if type(button_data) == str:
+            s1 = button_data
+        elif type(button_data) == list and len(button_data) == 2:
+            (s, n) = button_data
+            s1 = s * n
+        else:
+            self.logger.error('invalid button_data: %s', button_data)
+            return ''
+        self.logger.debug('s1=%s', s1)
+
+        #
+        # マクロ展開
+        #
+        for m in dev_data['macro']:
+            s1 = s1.replace(m, dev_data['macro'][m])
+        self.logger.debug('s1=%s', s1)
+        if '[' in s1 or ']' in s1:
+            self.logger.error('invalid macro: s1=%s', s1)
+            return ''
+
+        #
+        # スペース削除
+        #
+        s1 = s1.replace(' ', '')
+        self.logger.debug('s1=%s', s1)
+
+        #
+        # バイナリコードの途中の ``HEADER_BIN``(0b)を削除
+        #   '(0b)01(0b)10' -> '(0b)0110'
+        #
+        s1 = s1.replace('0' + self.HEADER_BIN, '0')
+        s1 = s1.replace('1' + self.HEADER_BIN, '0')
+
+        #
+        # 記号、数値部の分割
+        #
+        for ch in self.SYM_TBL:
+            if ch in '01':
+                continue
+            s1 = s1.replace(ch, ' ' + ch + ' ')
+        s_list1 = s1.split()
+        self.logger.debug('s1=%s', s1)
+
+        #
+        # hex -> bin, '(0b)0101' -> '0101'
+        #
+        s_list2 = []
+        for sig in s_list1:
+            if sig in self.SYM_TBL and sig not in '01':
+                s_list2.append(sig)
+                continue
+
+            if sig.startswith(self.HEADER_BIN):
+                # '(0b)0101' -> '0101'
+                s_list2.append(sig[len(self.HEADER_BIN):])
+                continue
+
+            # hex -> bin
+            bin_str = ''
+            for ch in sig:
+                bin_str += format(int(ch, 16), '04b')
+            s_list2.append(bin_str)
+
+        #
+        # 一つの文字列に再結合
+        #
+        syms = ''.join(s_list2)
+        self.logger.debug('syms=%s', syms)
+
+        return syms
 
     def get_raw_data(self, dev_name, button_name):
         """
@@ -108,93 +213,15 @@ class IrConfig:
             return ['no such button']
         self.logger.debug('button_data=%s', button_data)
 
-        sig_str = ''
-        #
-        # 繰り返し回数展開
-        #
-        if type(button_data) == str:
-            sig_str = button_data
-        elif type(button_data) == list:
-            if len(button_data) == 2:
-                (s, n) = button_data
-                for i in range(n):
-                    sig_str += s
-        self.logger.debug('sig_str=%s', sig_str)
-        if sig_str == '':
-            self.logger.error('invalid button_data:%s', button_data)
-            return ['invalid button data']
-
-        #
-        # マクロ(prefix, suffix etc.)展開
-        #
-        for m in dev_data['macro']:
-            sig_str = sig_str.replace(m, dev_data['macro'][m])
-        self.logger.debug('sig_str=%s', sig_str)
-        if '[' in sig_str or ']' in sig_str:
-            msg = 'invalid macro: sig_str=\'%s\'' % sig_str
-            self.logger.error(msg)
-            return [msg]
-        #
-        # スペース削除
-        #
-        sig_str = sig_str.replace(' ', '')
-        self.logger.debug('sig_str=%s', sig_str)
-
-        #
-        # バイナリコードの途中の HEADR_BIN を削除
-        #   '(0b)01(0b)10' -> '(0b)0110'
-        #
-        sig_str = sig_str.replace('0' + self.HEADER_BIN, '0')
-        sig_str = sig_str.replace('1' + self.HEADER_BIN, '1')
-
-        #
-        # 記号、数値部の分割
-        #
-        for ch in dev_data['sym_tbl']:
-            if ch in '01':
-                continue
-            sig_str = sig_str.replace(ch, ' ' + ch + ' ')
-        self.logger.debug('sig_str=%s', sig_str)
-        sig_list1 = sig_str.split()
-        self.logger.debug('sig_list1=%s', sig_list1)
-
-        #
-        # hex -> bin
-        #
-        sig_list2 = []
-        for sig in sig_list1:
-            if sig in dev_data['sym_tbl']:
-                if sig not in '01':
-                    sig_list2.append(sig)
-                    continue
-
-            if sig.startswith(self.HEADER_BIN):
-                # '(0b)0101' -> '0101'
-                sig_list2.append(sig[len(self.HEADER_BIN):])
-                continue
-
-            # hex -> bin
-            bin_str = ''
-            for ch in sig:
-                if ch in '0123456789ABCDEFabcdef':
-                    bin_str += format(int(ch, 16), '04b')
-                else:
-                    bin_str += ch
-            sig_list2.append(bin_str)
-        self.logger.debug('sig_list2=%s', sig_list2)
-
-        #
-        # 一つの文字列に再結合
-        #
-        sig_str2 = ''.join(sig_list2)
-        self.logger.debug('sig_str2=%s', sig_str2)
+        syms = self.button_data2syms(dev_data, button_data)
+        self.logger.debug('syms=%s', syms)
 
         #
         # make pulse,space list (raw_data)
         #
         raw_data = []
         t = dev_data['T']
-        for ch in sig_str2:
+        for ch in syms:
             if ch not in dev_data['sym_tbl']:
                 self.logger.warning('ch=%s !? .. ignored', ch)
                 continue
