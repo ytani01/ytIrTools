@@ -63,7 +63,7 @@ class IrConfig:
                     '/': 'trailer',
                     '*': 'repeat',
                     '?': 'unknonw'}
-    
+
     CONF_SUFFIX  = '.irconf'
     DEF_CONF_DIR = ['.',
                     str(Path.home()) + '/.irconf.d',
@@ -88,30 +88,83 @@ class IrConfig:
         if load_all:
             self.load_all()
 
-    def button_data2syms(self, dev_data, button_data):
+    def expand_button_macro(self, macro_data, button_data):
+        """
+        ボタンデータのマクロ展開
+
+        Parameters
+        ----------
+        macro_data: dict
+
+        button_data: str or [str, n]
+
+        Returns
+        -------
+        s1: str
+        [s1, n]
+        None: error
+
+        """
+        self.logger.debug('macro_data=%s', macro_data)
+        self.logger.debug('button_data=%s', button_data)
+
+        n = 1
+        if type(button_data) == str:
+            s1 = button_data
+        elif type(button_data) == list and len(button_data) == 2:
+            (s1, n) = button_data
+        else:
+            self.logger.error('invalid button_data: %s', button_data)
+            return None
+        self.logger.debug('s1=%s', s1)
+
+        for m in macro_data:
+            self.logger.debug('m=%s', m)
+            s1 = s1.replace(m, macro_data[m])
+        if '[' in s1 or ']' in s1:
+            self.logger.error('invalid macro: s1=%s', s1)
+            return None
+        self.logger.debug('s1=%s', s1)
+
+        if n == 1:
+            button_data = s1
+        else:
+            button_data = [s1, n]
+        self.logger.debug('button_data=%s', button_data)
+
+        return button_data
+
+    def button_data2syms(self, macro_data, button_data):
         """
         ボタン情報 ``button_data`` を信号シンボル文字列 ``syms`` に変換。
 
         Parameters
         ----------
-        dev_data: dict
+        macro_data: dict
+          ex. {'[prefix]': '-0101',
+               '[suffix]': '0101/*/'}
 
         button_data: str
-          '[prefix] 01 23 [suffix]'
+          ex. '[prefix] 01 23 [suffix]'
 
         Returns
         -------
         syms: str
+          ex. '-0101..0101/*/'
+
         """
-        self.logger.debug('dev_data=%s, button_data=%s', dev_data, button_data)
+        self.logger.debug('macro_data=%s, button_data=%s',
+                          macro_data, button_data)
 
         if button_data == '':
             self.logger.error('no button_data')
             return ''
-        
-        #
+
+        # マクロ展開
+        button_data = self.expand_button_macro(macro_data, button_data)
+        self.logger.debug('button_data=%s', button_data)
+
         # 繰り返し回数展開
-        #
         s1 = ''
         if type(button_data) == str:
             s1 = button_data
@@ -123,32 +176,15 @@ class IrConfig:
             return ''
         self.logger.debug('s1=%s', s1)
 
-        #
-        # マクロ展開
-        #
-        for m in dev_data['macro']:
-            s1 = s1.replace(m, dev_data['macro'][m])
-        self.logger.debug('s1=%s', s1)
-        if '[' in s1 or ']' in s1:
-            self.logger.error('invalid macro: s1=%s', s1)
-            return ''
-
-        #
         # スペース削除
-        #
         s1 = s1.replace(' ', '')
         self.logger.debug('s1=%s', s1)
 
-        #
-        # バイナリコードの途中の ``HEADER_BIN``(0b)を削除
-        #   '(0b)01(0b)10' -> '(0b)0110'
-        #
+        # '(0b)01(0b)10' -> '(0b)0110'
         s1 = s1.replace('0' + self.HEADER_BIN, '0')
         s1 = s1.replace('1' + self.HEADER_BIN, '0')
 
-        #
         # 記号、数値部の分割
-        #
         for ch in self.SYM_TBL:
             if ch in '01':
                 continue
@@ -156,9 +192,7 @@ class IrConfig:
         s_list1 = s1.split()
         self.logger.debug('s1=%s', s1)
 
-        #
         # hex -> bin, '(0b)0101' -> '0101'
-        #
         s_list2 = []
         for sig in s_list1:
             if sig in self.SYM_TBL and sig not in '01':
@@ -186,7 +220,8 @@ class IrConfig:
 
     def get_raw_data(self, dev_name, button_name):
         """
-        デバイス情報を取得して、[pulse, space] のリストを返す。
+        デバイス情報を取得して、
+        指定されたボタンの[pulse, space] のリストを返す。
 
         Parameters
         ----------
@@ -201,11 +236,19 @@ class IrConfig:
         """
         self.logger.debug('dev_name=%s, button_name=%s', dev_name, button_name)
 
+        #
+        # デバイス情報取得
+        #
         dev = self.get_dev(dev_name)
         if dev is None:
             self.logger.error('%s: no such device', dev_name)
             return[]
         dev_data = dev['data']
+        self.logger.debug('dev_data=%s', dev_data)
+
+        #
+        # ボタン情報抽出
+        #
         try:
             button_data = dev_data['buttons'][button_name]
         except KeyError:
@@ -213,11 +256,15 @@ class IrConfig:
             return ['no such button']
         self.logger.debug('button_data=%s', button_data)
 
-        syms = self.button_data2syms(dev_data, button_data)
+        #
+        # ボタンデータをシンボル文字列に変換
+        #
+        syms = self.button_data2syms(dev_data['macro'], button_data)
         self.logger.debug('syms=%s', syms)
 
         #
         # make pulse,space list (raw_data)
+        #  [[pulse1, space1], [pulse2, space2], .. ]
         #
         raw_data = []
         t = dev_data['T']
@@ -240,8 +287,10 @@ class IrConfig:
         dev_name: str2
 
         Returns
+        -------
         d_ent: dict
           {'file': file_name, 'data': conf_data}
+
         """
         self.logger.debug('dev_name=%s', dev_name)
 
@@ -410,9 +459,15 @@ class App:
         self.logger.debug('')
 
 
-#### main
+#
+# main
+#
 import click
+
+
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+
+
 @click.command(context_settings=CONTEXT_SETTINGS,
                help='IR config')
 @click.argument('dev_name', type=str)
