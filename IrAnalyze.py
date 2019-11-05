@@ -10,8 +10,7 @@ __date__   = '2019'
 
 from IrConfig import IrConfig
 import json
-import MyLogger
-
+from MyLogger import get_logger
 
 class IrAnalyze:
     """
@@ -42,7 +41,7 @@ class IrAnalyze:
 
         """
         self.debug = debug
-        self.logger = MyLogger.get_logger(__class__.__name__, self.debug)
+        self.logger = get_logger(__class__.__name__, self.debug)
         self.logger.debug('raw_data=%s', raw_data)
 
         self.result   = None
@@ -475,7 +474,7 @@ class App:
 
     def __init__(self, pin, n=0, verbose=False, debug=False):
         self.debug = debug
-        self.logger = MyLogger.get_logger(__class__.__name__, debug)
+        self.logger = get_logger(__class__.__name__, debug)
         self.logger.debug('pin=%d, n=%d, verbose=%s', pin, n, verbose)
 
         self.pin     = pin
@@ -611,7 +610,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('--debug', '-d', 'debug', is_flag=True, default=False,
               help='debug flag')
 def main(pin, n, verbose, debug):
-    logger = MyLogger.get_logger(__name__, debug)
+    logger = get_logger(__name__, debug)
     logger.debug('pin=%d, n=%d', pin, n)
 
     app = App(pin, n, verbose, debug=debug)

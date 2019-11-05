@@ -9,14 +9,14 @@ __author__ = 'Yoichi Tanibayashi'
 __date__   = '2019'
 
 from IrAnalyze import IrAnalyze
-import MyLogger
+from MyLogger import get_logger
 
 
 #####
 class App:
     def __init__(self, file, debug=False):
         self.debug = debug
-        self.logger = MyLogger.get_logger(__class__.__name__, self.debug)
+        self.logger = get_logger(__class__.__name__, self.debug)
         self.logger.debug('file=%s', file)
 
         self.file = file
@@ -60,7 +60,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('--debug', '-d', 'debug', is_flag=True, default=False,
               help='debug flag')
 def main(file, debug):
-    logger = MyLogger.get_logger(__name__, debug)
+    logger = get_logger(__name__, debug)
     logger.debug('file=%s', file)
 
     app = App(file, debug=debug)

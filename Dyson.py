@@ -11,7 +11,7 @@ __date__   = '2019'
 
 from IrSend import App
 from pathlib import Path
-import MyLogger
+from MyLogger import get_logger
 
 #####
 DEF_PIN = 22
@@ -24,7 +24,7 @@ class Dyson:
 
     def __init__(self, dev_name=DEV_NAME, serial_max=SERIAL_MAX, debug=False):
         self.debug = debug
-        self.logger = MyLogger.get_logger(__class__.__name__, self.debug)
+        self.logger = get_logger(__class__.__name__, self.debug)
         self.logger.debug('')
 
         self.dev_name   = dev_name
@@ -62,7 +62,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('--debug', '-d', 'debug', is_flag=True, default=False,
               help='debug flag')
 def main(args, pin, interval, n, debug):
-    logger = MyLogger.get_logger(__name__, debug)
+    logger = get_logger(__name__, debug)
     logger.debug('args=%s, n=%d, interval=%f, pin=%d',
                  args, n, interval, pin)
 

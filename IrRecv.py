@@ -13,7 +13,7 @@ import pigpio
 import time
 import queue
 import threading
-import MyLogger
+from MyLogger import get_logger
 
 
 #####
@@ -46,7 +46,7 @@ class IrRecv:
         debug: bool
         """
         self.debug = debug
-        self.logger = MyLogger.get_logger(__class__.__name__, self.debug)
+        self.logger = get_logger(__class__.__name__, self.debug)
         self.logger.debug('pin=%d, glitch_usec=%d', pin, glitch_usec)
 
         self.pin = pin
@@ -299,7 +299,7 @@ class IrRecv:
 class App:
     def __init__(self, pin, debug=False):
         self.debug = debug
-        self.logger = MyLogger.get_logger(__class__.__name__, self.debug)
+        self.logger = get_logger(__class__.__name__, self.debug)
         self.logger.debug('pin=%d', pin)
 
         self.r = IrRecv(pin, verbose=True, debug=self.debug)
@@ -330,7 +330,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('--debug', '-d', 'debug', is_flag=True, default=False,
               help='debug flag')
 def main(pin, debug):
-    logger = MyLogger.get_logger(__name__, debug)
+    logger = get_logger(__name__, debug)
     logger.debug('pin: %d', pin)
 
     app = App(pin, debug=debug)

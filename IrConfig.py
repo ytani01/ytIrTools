@@ -10,7 +10,7 @@ __date__   = '2019'
 
 import json
 from pathlib import Path
-import MyLogger
+from MyLogger import get_logger
 
 
 #####
@@ -71,7 +71,7 @@ class IrConfig:
 
     def __init__(self, conf_dir=None, load_all=False, debug=False):
         self.debug = debug
-        self.logger = MyLogger.get_logger(__class__.__name__, self.debug)
+        self.logger = get_logger(__class__.__name__, self.debug)
         self.logger.debug('conf_dir=%s', conf_dir)
 
         if conf_dir is None:
@@ -412,7 +412,7 @@ class App:
     """
     def __init__(self, debug=False):
         self.debug = debug
-        self.logger = MyLogger.get_logger(__class__.__name__, debug)
+        self.logger = get_logger(__class__.__name__, debug)
         self.logger.debug('')
 
     def main(self, dev_name, button, conf_file):
@@ -477,7 +477,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('--debug', '-d', 'debug', is_flag=True, default=False,
               help='debug flag')
 def main(dev_name, button, conf_file, debug):
-    logger = MyLogger.get_logger(__name__, debug)
+    logger = get_logger(__name__, debug)
     logger.debug('dev_name=%s, button=%s, file=%s',
                  dev_name, button, conf_file)
 

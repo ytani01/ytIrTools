@@ -11,7 +11,7 @@ from logging import getLogger, StreamHandler, Formatter, DEBUG, INFO, WARN
 class MyLogger:
     def __init__(self, name=''):
         fmt_hdr = '%(asctime)s %(levelname)s '
-        fmt_loc = '%(name)s.%(funcName)s:%(lineno)d> '
+        fmt_loc = '%(filename)s.%(name)s.%(funcName)s:%(lineno)d> '
         self.handler_fmt = Formatter(fmt_hdr + fmt_loc + '%(message)s',
                                      datefmt='%H:%M:%S')
 
@@ -32,7 +32,9 @@ class MyLogger:
             logger.setLevel(INFO)
         return logger
 
-myLogger = MyLogger(__file__.split('/')[-1])
+
+myLogger = MyLogger()
+
 
 def get_logger(name, debug):
-  return myLogger.get_logger(name, debug)
+    return myLogger.get_logger(name, debug)

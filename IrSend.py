@@ -13,7 +13,8 @@ __date__   = '2019'
 from IrConfig import IrConfig
 import pigpio
 import time
-import MyLogger
+from MyLogger import get_logger
+
 
 #####
 DEF_PIN = 22
@@ -28,7 +29,7 @@ class WaveForm:
 
     def __init__(self, pin, debug=False):
         self.debug = debug
-        self.logger = MyLogger.get_logger(__class__.__name__, debug)
+        self.logger = get_logger(__class__.__name__, debug)
         self.logger.debug('pin=%d', pin)
 
         self.pin = pin
@@ -110,7 +111,7 @@ class Wave(WaveForm):
 
     def __init__(self, pi, pin, debug=False):
         self.debug = debug
-        self.logger = MyLogger.get_logger(__class__.__name__, debug)
+        self.logger = get_logger(__class__.__name__, debug)
         self.logger.debug('pin: %d', pin)
 
         self.pi  = pi
@@ -147,7 +148,7 @@ class IrSend:
 
     def __init__(self, pin, load_conf=False, debug=False):
         self.debug = debug
-        self.logger = MyLogger.get_logger(__class__.__name__, debug)
+        self.logger = get_logger(__class__.__name__, debug)
         self.logger.debug('pin: %d', pin)
 
         self.pin = pin
@@ -301,7 +302,7 @@ class App:
 
     def __init__(self, args, n, interval, pin, debug=False):
         self.debug = debug
-        self.logger = MyLogger.get_logger(__class__.__name__, self.debug)
+        self.logger = get_logger(__class__.__name__, self.debug)
         self.logger.debug('args=%s, n=%d, interval=%d, pin=%d',
                           args, n, interval, pin)
 
@@ -478,7 +479,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('--debug', '-d', 'debug', is_flag=True, default=False,
               help='debug flag')
 def main(args, pin, interval, n, debug):
-    logger = MyLogger.get_logger(__name__, debug)
+    logger = get_logger(__name__, debug)
     logger.debug('args=%s, n=%d, interval=%f, pin=%d',
                  args, n, interval, pin)
 
