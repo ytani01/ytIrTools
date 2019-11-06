@@ -43,6 +43,7 @@ class IrConfig:
         "*": [n, n], # repeat
         "?": [n, n]  # ???
       },
+      "def_repeat": n,
       "macro": {
         "[prefix]": "- {hex|(0b)bin} ",
         "[suffix]": "{hex|bin} /",
@@ -88,109 +89,106 @@ class IrConfig:
         if load_all:
             self.load_all()
 
-    def expand_button_macro(self, macro_data, button_data):
+    def expand_button_macro(self, macro_data, button_str):
         """
-        ボタンデータのマクロ展開
+        ボタンのマクロ展開
+
 
         Parameters
         ----------
         macro_data: dict
+        button_str: str
 
-        button_data: str or [str, n]
 
         Returns
         -------
-        s1: str
-        [s1, n]
-        None: error
+        button_str: str
+        '': error
 
         """
-        self.logger.debug('macro_data=%s', macro_data)
-        self.logger.debug('button_data=%s', button_data)
-
-        n = 1
-        if type(button_data) == str:
-            s1 = button_data
-        elif type(button_data) == list and len(button_data) == 2:
-            (s1, n) = button_data
-        else:
-            self.logger.error('invalid button_data: %s', button_data)
-            return None
-        self.logger.debug('s1=%s', s1)
+        self.logger.debug('macro_data=%s', json.dumps(macro_data, indent=2))
+        self.logger.debug('button_str=%s', button_str)
 
         for m in macro_data:
             self.logger.debug('m=%s', m)
-            s1 = s1.replace(m, macro_data[m])
-        if '[' in s1 or ']' in s1:
-            self.logger.error('invalid macro: s1=%s', s1)
-            return None
-        self.logger.debug('s1=%s', s1)
+            button_str = button_str.replace(m, macro_data[m])
+            self.logger.debug('button_str=%s', button_str)
 
-        if n == 1:
-            button_data = s1
-        else:
-            button_data = [s1, n]
-        self.logger.debug('button_data=%s', button_data)
+        if '[' in button_str or ']' in button_str:
+            self.logger.error('invalid macro: button_str=%s', button_str)
+            return ''
 
-        return button_data
+        return button_str
 
-    def button_data2syms(self, macro_data, button_data):
+    def button2syms(self, dev_data, button_name):
         """
-        ボタン情報 ``button_data`` を信号シンボル文字列 ``syms`` に変換。
+        ボタン情報 ``button_name`` を信号シンボル文字列 ``syms`` に変換。
 
         Parameters
         ----------
-        macro_data: dict
-          ex. {'[prefix]': '-0101',
-               '[suffix]': '0101/*/'}
-
-        button_data: str
-          ex. '[prefix] 01 23 [suffix]'
+        dev_data: dict
+        button_name: str
 
         Returns
         -------
         syms: str
           ex. '-0101..0101/*/'
 
-        """
-        self.logger.debug('macro_data=%s, button_data=%s',
-                          macro_data, button_data)
+        '': error
 
-        if button_data == '':
-            self.logger.error('no button_data')
+        """
+        self.logger.debug('dev_data=%s, button_name=%s',
+                          dev_data, button_name)
+
+        try:
+            button_data = dev_data['buttons'][button_name]
+        except KeyError:
+            self.logger.error('\'%s\': no such button', button_name)
             return ''
 
-        # マクロ展開
-        button_data = self.expand_button_macro(macro_data, button_data)
-        self.logger.debug('button_data=%s', button_data)
-
-        # 繰り返し回数展開
-        s1 = ''
         if type(button_data) == str:
-            s1 = button_data
+            button_str = button_data
+            try:
+                button_rep = dev_data['def_repeat']
+                self.logger.debug('button_rep=dev_data[\'def_repeat\']=%d',
+                                  button_rep)
+            except KeyError:
+                button_rep = 1
         elif type(button_data) == list and len(button_data) == 2:
-            (s, n) = button_data
-            s1 = s * n
+            (button_str, button_rep) = button_data
         else:
             self.logger.error('invalid button_data: %s', button_data)
             return ''
-        self.logger.debug('s1=%s', s1)
+        self.logger.debug('button_str=%s', button_str)
+        self.logger.debug('button_rep=%d', button_rep)
+
+        # マクロ展開
+        try:
+            button_str = self.expand_button_macro(dev_data['macro'],
+                                                  button_str)
+            self.logger.debug('button_str=%s', button_str)
+        except KeyError:
+            self.logger.warning('no macro')
+
+        # 繰り返し回数展開
+        button_str = button_str * button_rep
+        self.logger.debug('button_str=%s', button_str)
 
         # スペース削除
-        s1 = s1.replace(' ', '')
-        self.logger.debug('s1=%s', s1)
+        button_str = button_str.replace(' ', '')
+        self.logger.debug('button_str=%s', button_str)
 
         # '(0b)01(0b)10' -> '(0b)0110'
-        s1 = s1.replace('0' + self.HEADER_BIN, '0')
-        s1 = s1.replace('1' + self.HEADER_BIN, '0')
+        for bit in '01':
+            button_str = button_str.replace(bit + self.HEADER_BIN, bit)
 
         # 記号、数値部の分割
         for ch in self.SYM_TBL:
             if ch in '01':
                 continue
-            s1 = s1.replace(ch, ' ' + ch + ' ')
-        s_list1 = s1.split()
-        self.logger.debug('s1=%s', s1)
+            button_str = button_str.replace(ch, ' ' + ch + ' ')
+        s_list1 = button_str.split()
+        self.logger.debug('button_str=%s', button_str)
 
         # hex -> bin, '(0b)0101' -> '0101'
         s_list2 = []
@@ -233,6 +231,8 @@ class IrConfig:
         raw_data: list
           [[p1, s1], [p2, s2], .. ]
 
+        []: error
+
         """
         self.logger.debug('dev_name=%s, button_name=%s', dev_name, button_name)
 
@@ -241,26 +241,18 @@ class IrConfig:
         #
         dev = self.get_dev(dev_name)
         if dev is None:
-            self.logger.error('%s: no such device', dev_name)
-            return[]
+            self.logger.error('\'%s\': no such device', dev_name)
+            return []
         dev_data = dev['data']
         self.logger.debug('dev_data=%s', dev_data)
 
         #
-        # ボタン情報抽出
-        #
-        try:
-            button_data = dev_data['buttons'][button_name]
-        except KeyError:
-            self.logger.warning('no such button: %s,%s', dev_name, button_name)
-            return ['no such button']
-        self.logger.debug('button_data=%s', button_data)
-
-        #
         # ボタンデータをシンボル文字列に変換
         #
-        syms = self.button_data2syms(dev_data['macro'], button_data)
+        syms = self.button2syms(dev_data, button_name)
         self.logger.debug('syms=%s', syms)
+        if syms == '':
+            return []
 
         #
         # make pulse,space list (raw_data)
@@ -335,8 +327,9 @@ class IrConfig:
 
         for f in files:
             if self.load(f) is None:
-                return False
-        return True
+                self.logger.error('%s: loading failed', f)
+
+        return self.data
 
     def load_json_dump(self, file_name):
         """ [現在は不要 ?]
@@ -364,7 +357,11 @@ class IrConfig:
         line.append(']')
         s = ''.join(line)
         self.logger.debug(s)
-        data = json.loads(s)
+        try:
+            data = json.loads(s)
+        except Exception as e:
+            return None
+        self.logger.debug('data=%s', data)
         return data
 
     def load(self, file_name):
@@ -404,6 +401,7 @@ class IrConfig:
 
     def save(self, file_name=None):
         self.logger.debug('file_name=%s', file_name)
+        # TBD
 
 
 #####
@@ -423,9 +421,13 @@ class App:
         self.logger.debug('irconf=%s', irconf)
 
         if len(conf_file) == 0:
-            irconf.load_all()
+            if irconf.load_all() is None:
+                self.logger.error('loading failed')
+                return
         else:
-            irconf.load(conf_file)
+            if irconf.load(conf_file) is None:
+                self.logger.error('\'%s\': loading faild', conf_file)
+                return
 
         conf_data_ent = irconf.get_dev(dev_name)
         self.logger.debug('conf_data_ent=%s', conf_data_ent)

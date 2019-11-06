@@ -163,6 +163,9 @@ class IrSend:
         self.irconf = None
         if load_conf:
             self.irconf = IrConfig(load_all=True, debug=self.debug)
+            self.logger.debug('data=%s', self.irconf.data)
+            if self.irconf.data is None:
+                self.logger.error('no config data')
 
     def clean_wave(self):
         self.logger.debug('')
@@ -280,6 +283,9 @@ class IrSend:
 
         if self.irconf is None:
             self.irconf = IrConfig(load_all=True, debug=self.debug)
+            if self.irconf.data is None:
+                self.logger.error('loading config files: failed')
+                return False
 
         raw_data = self.irconf.get_raw_data(dev_name, button_name)
         if raw_data == []:
