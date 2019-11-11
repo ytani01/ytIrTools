@@ -2,6 +2,22 @@
 #
 # (c) 2019 Yoichi Tanibayashi
 #
+"""
+MyLogger.py
+
+Usage:
+
+--
+from MyLogger import get_logger
+
+class A:
+    def __init__(self, a, debug=False)
+        self.debug = debug
+        self.logger = get_logger(__class__.__name__, self.debug)
+        self.logger.debug('a=%s', a)
+--
+
+"""
 __author__ = 'Yoichi Tanibayashi'
 __date__   = '2019'
 
