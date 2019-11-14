@@ -21,9 +21,9 @@ DEF_PIN = 22
 class AutoAirconHeater:
     D_SEC_MAX = 3600  # 1 hour
 
-    DEF_KP = 0.1
-    DEF_KI = 0.00001
-    DEF_KD = 100
+    DEF_KP = 0.2
+    DEF_KI = 0.0001
+    DEF_KD = 50
 
     REMOCON_TEMP_INIT = 25
 
