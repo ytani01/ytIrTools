@@ -21,8 +21,8 @@ DEF_PIN = 22
 class AutoAircon:
     D_SEC_MAX = 3600  # 1 hour
 
-    DEF_KP = 0.8
-    DEF_KI = 0.001
+    DEF_KP = 1.2
+    DEF_KI = 0.003
     DEF_KD = 50
 
     REMOCON_TEMP_INIT = 25
