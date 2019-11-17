@@ -10,6 +10,7 @@ __date__   = '2019'
 
 from IrSend import IrSend
 from BbtTempSubscriber import BbtTempSubscriber
+import time
 
 from MyLogger import get_logger
 
@@ -21,7 +22,7 @@ DEF_PIN = 22
 class AutoAircon:
     D_SEC_MAX = 3600  # 1 hour
 
-    DEF_KP = 1.2
+    DEF_KP = 1.5
     DEF_KI = 0.003
     DEF_KD = 50
 
@@ -68,6 +69,10 @@ class AutoAircon:
         self._temp_hist.append({'ts': ts, 'temp': temp})
         d_sec = ts - self._temp_hist[0]['ts']
         self._logger.debug('d_sec=%.2f, temp_hist=%s', d_sec, self._temp_hist)
+        if d_sec < 0:
+            self._logger.warning('invalid d_sec=%.2f: ignored', d_sec)
+            self._temp_hist.pop()
+            return self._temp_hist
         while d_sec > self.HIST_MAX_SEC:
             self._temp_hist.pop(0)
             d_sec = ts - self._temp_hist[0]['ts']
@@ -93,23 +98,39 @@ class AutoAircon:
             ts_msec, cur_temp = self._temp_subscriber.get_temp()
             ts = ts_msec / 1000
             self._logger.debug('ts=%f, cur_temp=%f', ts_msec, cur_temp)
+
             if ts_msec == 0:
-                self._logger.warning('ignore')
+                self._logger.warning('ts_msec=%d .. ignored', ts_msec)
                 continue
+
+            year = time.localtime(ts_msec/1000).tm_year
+            if year > 2100 or year < 2000:
+                self._logger.warning('year=%d: invalid year .. ignored', year)
+                continue
+
+            if len(self._temp_hist) > 0:
+                if ts_msec < self._temp_hist[-1]['ts']:
+                    self._logger.warning('ts_msec=%d < %d .. ignored',
+                                         ts_msec, self._temp_hist[-1]['ts'])
+                    continue
 
             self.add_hist(ts, cur_temp)
 
             date_str = self._temp_subscriber.ts2datestr(ts_msec)
             self._logger.debug('date_str=%s', date_str)
 
+            self._logger.info('%s: %.2f', date_str, cur_temp)
+
             remocon_temp = self.calc_remocon_temp(self._temp_hist)
             self._logger.debug('remocon_temp=%d', remocon_temp)
             if remocon_temp < 0:
-                self._logger.warning('ignored')
+                self._logger.warning('remocon_temp=%d: ignored',
+                                     remocon_temp)
                 continue
 
             if remocon_temp == 0:
-                self._logger.debug('ignored')
+                self._logger.warning('remocon_temp=%d: ignored',
+                                     remocon_temp)
                 continue
 
             button_name = self._button_header + str(remocon_temp)
@@ -120,7 +141,7 @@ class AutoAircon:
 
     def end(self):
         self._logger.debug('')
-        #self._aircon.send('off')
+        # self._aircon.send('off')
         self._aircon.end()
         self._temp_subscriber.end()
 
@@ -145,7 +166,7 @@ class AutoAircon:
             sum_temp += h['temp']
         ave_temp = sum_temp / len(temp_hist)
         self._logger.debug('ave_temp=%f', ave_temp)
-            
+
         p_temp = ave_temp - self._target_temp
         i_temp = self._i_temp \
             + ((cur_temp + prev_temp) * (cur_ts - prev_ts) / 2) \
@@ -166,7 +187,7 @@ class AutoAircon:
         #
         # calc remocon_temp
         #
-        #remocon_temp = round(self._remocon_temp - pid)
+        # remocon_temp = round(self._remocon_temp - pid)
         remocon_temp = round(self._target_temp - pid)
         self._logger.debug('remocon_temp=%d', remocon_temp)
 
@@ -191,6 +212,8 @@ class Aircon:
 
     def send(self, button):
         self._logger.debug('button=%s', button)
+
+        self._logger.info('%s: %s', self._dev_name, button)
         return self._irsend.send(self._dev_name, button)
 
     def end(self):
