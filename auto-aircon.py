@@ -22,11 +22,14 @@ DEF_PIN = 22
 class AutoAircon:
     D_SEC_MAX = 3600  # 1 hour
 
-    DEF_KP = 1.5
-    DEF_KI = 0.003
-    DEF_KD = 50
+    DEF_KP = 1.6
+    DEF_KI = 0.002
+    DEF_KD = 60
 
-    REMOCON_TEMP_INIT = 25
+    I_WORK_MAX = 3
+
+    REMOCON_TEMP_MIN = 20
+    REMOCON_TEMP_MAX = 30
 
     HIST_MAX_SEC = 60
 
@@ -56,7 +59,7 @@ class AutoAircon:
         self._ki = self.DEF_KI
         self._kd = self.DEF_KD
 
-        self._remocon_temp = round(self._target_temp)
+        self._remocon_temp = round(self._target_temp) - 1
 
         self._temp_subscriber = BbtTempSubscriber(self._token, self._topic,
                                                   debug=False)
@@ -123,14 +126,15 @@ class AutoAircon:
 
             remocon_temp = self.calc_remocon_temp(self._temp_hist)
             self._logger.debug('remocon_temp=%d', remocon_temp)
-            if remocon_temp < 0:
-                self._logger.warning('remocon_temp=%d: ignored',
+
+            if remocon_temp <= 0:
+                self._logger.warning('remocon_temp=%d .. ignored',
                                      remocon_temp)
                 continue
 
-            if remocon_temp == 0:
-                self._logger.warning('remocon_temp=%d: ignored',
-                                     remocon_temp)
+            if remocon_temp == self._remocon_temp:
+                self._logger.debug('remocon_temp=_remocon_temp=%d .. ignored',
+                                   remocon_temp)
                 continue
 
             button_name = self._button_header + str(remocon_temp)
@@ -138,6 +142,8 @@ class AutoAircon:
 
             if not self._aircon.send(button_name):
                 self._logger.error('%s: sending failed', button_name)
+
+            self._remocon_temp = remocon_temp
 
     def end(self):
         self._logger.debug('')
@@ -174,12 +180,13 @@ class AutoAircon:
         d_temp = (cur_temp - first_temp) / (cur_ts - first_ts)
         self._logger.debug('(p,i,d)_temp=(%f, %f, %f)', p_temp, i_temp, d_temp)
 
-        self._i_temp = i_temp
-
         p_work = self._kp * p_temp
         i_work = self._ki * i_temp
         d_work = self._kd * d_temp
         self._logger.debug('(p,i,d)_work=(%f, %f, %f)', p_work, i_work, d_work)
+
+        if i_work < self.I_WORK_MAX:
+            self._i_temp = i_temp
 
         pid = p_work + i_work + d_work
         self._logger.debug('pid=%f', pid)
@@ -187,15 +194,21 @@ class AutoAircon:
         #
         # calc remocon_temp
         #
-        # remocon_temp = round(self._remocon_temp - pid)
-        remocon_temp = round(self._target_temp - pid)
+        remocon_temp = self._target_temp - pid
+        self._logger.debug('remocon_temp=%.2f-%.2f=%.2f',
+                           self._target_temp, pid, remocon_temp)
+
+        remocon_temp = round(remocon_temp)
         self._logger.debug('remocon_temp=%d', remocon_temp)
 
-        if remocon_temp == self._remocon_temp:
-            return 0
-
-        self._remocon_temp = remocon_temp
-        return self._remocon_temp
+        if remocon_temp < self.REMOCON_TEMP_MIN:
+            remocon_temp = self.REMOCON_TEMP_MIN
+            self._logger.debug('remocon_temp=%d', remocon_temp)
+        if remocon_temp > self.REMOCON_TEMP_MAX:
+            remocon_temp = self.REMOCON_TEMP_MAX
+            self._logger.debug('remocon_temp=%d', remocon_temp)
+            
+        return remocon_temp
 
 
 class Aircon:
