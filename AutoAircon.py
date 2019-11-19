@@ -14,6 +14,7 @@ from ytBeebotte import Beebotte
 import threading
 import socketserver
 import socket
+import json
 import time
 
 from MyLogger import get_logger
@@ -305,40 +306,6 @@ class AutoAircon(threading.Thread):
         if self._ir_active or force:
             self._aircon.irsend_temp(temp)
 
-    def get_cur_temp(self):
-        self._logger.debug('')
-        if len(self._temp_hist) == 0:
-            return 99.99
-        return self._temp_hist[-1]['temp']
-
-    def get_remocon_temp(self):
-        self._logger.debug('')
-        return self._remocon_temp
-
-    def get_target_temp(self):
-        self._logger.debug('')
-        return self._target_temp
-
-    def set_target_temp(self, temp):
-        self._logger.debug('temp=%.1f', temp)
-
-        self._target_temp = temp
-        self._remocon_temp = round(self._target_temp) - 1
-        self.irsend_temp()
-        self._i = 0
-
-    def on(self):
-        self._logger.debug('')
-        self._ir_active = True
-        self.irsend_temp()
-        self._logger.debug('_ir_active=%s', self._ir_active)
-
-    def off(self):
-        self._logger.debug('')
-        self._ir_active = False
-        self.irsend_temp(0, force=True)
-        self._logger.debug('_ir_active=%s', self._ir_active)
-
 
 class AutoAirconHandler(socketserver.StreamRequestHandler):
     def __init__(self, request, client_address, server):
@@ -369,7 +336,7 @@ class AutoAirconHandler(socketserver.StreamRequestHandler):
     def handle(self):
         self._logger.debug('')
 
-        self.net_write('Ready\r\n')
+        # self.net_write('Ready\r\n')
 
         while self._active:
             # receive net_data
@@ -393,24 +360,24 @@ class AutoAirconHandler(socketserver.StreamRequestHandler):
             else:
                 self._logger.debug('decoded_data:%a', decoded_data)
 
-            self.net_write('ACK\r\n')
+            # self.net_write('ACK\r\n')
 
             # cmdline
             cmdline = decoded_data.split()
             self._logger.debug('cmdline=%s', cmdline)
             if len(cmdline) == 0:
-                continue
+                break
             if len(cmdline) == 1:
                 cmdline.append('')
                 self._logger.debug('cmdline=%s', cmdline)
 
             try:
                 ret = self._server._cmd[cmdline[0]](cmdline[1])
-                self.net_write('OK: ' + ret + '\r\n')
+                self.net_write(json.dumps(ret) + '\r\n')
             except KeyError:
-                ret = '%s: no such command' % cmdline[0]
-                self._logger.error(ret)
-                self.net_write('NG: ' + ret + '\r\n')
+                ret = {'rc': 'NG', 'msg': '%s: no such command' % cmdline[0]}
+                self._logger.error(json.dumps(ret))
+                self.net_write(json.dumps(ret) + '\r\n')
 
         self._logger.debug('done')
 
@@ -436,11 +403,18 @@ class AutoAirconServer(socketserver.TCPServer):
             time.sleep(1)
         self._logger.debug('port:%d is free', self._port)
 
-        try:
-            super().__init__(('', self._port), AutoAirconHandler)
-        except Exception as e:
-            self._logger.debug('%s:%s.', type(e), e)
-            return None
+        flag_ok = False
+        while not flag_ok:
+            try:
+                super().__init__(('', self._port), AutoAirconHandler)
+                flag_ok = True
+                self._logger.debug('flag_ok=%s', flag_ok)
+            except OSError as e:
+                self._logger.warning('%s:%s. retry..', type(e), e)
+                time.sleep(5)
+            except Exception as e:
+                self._logger.error('%s:%s.', type(e), e)
+                return None
 
     def serve_forever(self):
         self._logger.debug('')
@@ -469,13 +443,15 @@ class App:
         self._loop = True
 
         self._cmd = {
-            'curtemp': self.cmd_get_cur_temp,
-            'rtemp': self.cmd_get_remocon_temp,
-            'ttemp': self.cmd_get_target_temp,
-            'temp': self.cmd_target_temp,
+            'kp': self.cmd_kp,
+            'ki': self.cmd_ki,
+            'kd': self.cmd_kd,
+            'temp': self.cmd_temp,
+            'rtemp': self.cmd_remocon_temp,
+            'ttemp': self.cmd_target_temp,
             'on':   self.cmd_on,
             'off':  self.cmd_off,
-            'stop': self.cmd_stop
+            'quit': self.cmd_quit
         }
 
         self._aircon = AutoAircon(target_temp, dev, button_header, topic, pin,
@@ -486,12 +462,27 @@ class App:
         self._server_th = threading.Thread(target=self._server.serve_forever,
                                            daemon=True)
 
+        self._cmd_th = threading.Thread(target=self.cmd, daemon=True)
+
     def main(self):
         self._logger.debug('')
 
         self._aircon.start()
 
         self._server_th.start()
+        self._cmd_th.start()
+
+        while self._loop:
+            time.sleep(1)
+
+    def end(self):
+        self._logger.debug('')
+        self._aircon.end()
+        self._server.end()
+        self._logger.debug('done')
+
+    def cmd(self):
+        self._logger.debug('')
 
         while self._loop:
             cmdline = input().split()
@@ -504,75 +495,112 @@ class App:
 
             try:
                 ret = self._cmd[cmdline[0]](cmdline[1])
-                print(ret)
+                print(json.dumps(ret))
             except KeyError:
                 self._logger.error('%s: no such command', cmdline[0])
+            
 
-    def end(self):
-        self._logger.debug('')
-        self._aircon.end()
-        self._server.end()
-        self._logger.debug('done')
-
-    def cmd_get_cur_temp(self, param):
+    def cmd_kp(self, param):
         self._logger.debug('param=%s', param)
 
-        cur_temp = self._aircon.get_cur_temp()
+        if param != '':
+            kp = float(param)
+            self._aircon._kp = kp
+            self._aircon._i = 0
+        else:
+            kp = self._aircon._kp
 
-        ret = 'cur_temp=%.2f' % cur_temp
+        ret = {'rc': 'OK', 'kp': kp}
         return ret
 
-    def cmd_get_remocon_temp(self, param):
+    def cmd_ki(self, param):
         self._logger.debug('param=%s', param)
 
-        remocon_temp = self._aircon.get_remocon_temp()
+        if param != '':
+            ki = float(param)
+            self._aircon._ki = ki
+            self._aircon._i = 0
+        else:
+            ki = self._aircon._ki
 
-        ret = 'remocon_temp=%d' % remocon_temp
+        ret = {'rc': 'OK', 'ki': ki}
         return ret
 
-    def cmd_get_target_temp(self, param):
+    def cmd_kd(self, param):
         self._logger.debug('param=%s', param)
 
-        target_temp = self._aircon.get_target_temp()
+        if param != '':
+            kd = float(param)
+            self._aircon._kd = kd
+            self._aircon._i = 0
+        else:
+            kd = self._aircon._kd
 
-        ret = 'target_temp=%.1f' % target_temp
+        ret = {'rc':'OK', 'kd': kd}
+        return ret
+
+    def cmd_temp(self, param):
+        self._logger.debug('param=%s', param)
+
+        if len(self._aircon._temp_hist) == 0:
+            ret = {'rc': 'NG',  'cur_temp': ''}
+        else:
+            ret = {'rc': 'OK', 'cur_temp': self._aircon._temp_hist[-1]['temp']}
+        return ret
+
+    def cmd_remocon_temp(self, param):
+        self._logger.debug('param=%s', param)
+
+        if param != '':
+            remocon_temp = int(param)
+            self._aircon._remocon_temp = remocon_temp
+            self._aircon.irsend_temp(remocon_temp, force=True)
+        else:
+            remocon_temp = self._aircon._remocon_temp
+
+        ret = {'rc': 'OK', 'remocon_temp': remocon_temp}
         return ret
 
     def cmd_target_temp(self, param):
         self._logger.debug('param=%s', param)
 
-        if param == '':
-            ret = 'NG: no target temp'
-            return ret
+        if param != '':
+            target_temp = float(param)
+            self._aircon._target_temp = target_temp
+            self._aircon._remocon_temp = round(target_temp) - 1
+            self._aircon._i = 0
+            self._aircon.irsend_temp(target_temp, force=True)
+        else:
+            target_temp = self._aircon._target_temp
 
-        target_temp = float(param)
-        self._aircon.set_target_temp(target_temp)
-
-        ret = 'OK'
+        ret = {'rc': 'OK', 'target_temp': target_temp}
         return ret
 
     def cmd_on(self, param):
         self._logger.debug('param=%s', param)
 
-        self._aircon.on()
+        self._aircon._ir_active = True
+        self._aircon.irsend_temp()
+        self._i = 0
 
-        ret = 'OK'
+        ret = {'rc': 'OK', 'msg': 'on'}
         return ret
 
     def cmd_off(self, param):
         self._logger.debug('param=%s', param)
 
-        self._aircon.off()
+        self._aircon._ir_active = False
+        self._aircon.irsend_temp(0, force=True)
 
-        ret = 'OK'
+        ret = {'rc': 'OK', 'msg': 'off'}
         return ret
 
-    def cmd_stop(self, param):
+    def cmd_quit(self, param):
         self._logger.debug('param=%s', param)
 
         self._loop = False
 
-        ret = 'OK'
+        ret = {'rc': 'OK', 'msg': 'quit'}
         return ret
 
 
