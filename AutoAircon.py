@@ -431,14 +431,17 @@ class AutoAirconServer(socketserver.TCPServer):
 
 
 class App:
-    def __init__(self, target_temp, dev, button_header, topic, pin,
+    def __init__(self, target_temp, dev, button_header, topic, pin, tty,
                  debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
         self._logger.debug('target_temp=%.1f', target_temp)
         self._logger.debug('dev=%s, button_header=%s', dev, button_header)
         self._logger.debug('topic=%s', topic)
+        self._logger.debug('tty=%s', tty)
         self._logger.debug('pin=%d', pin)
+
+        self._tty = tty
 
         self._loop = True
 
@@ -470,7 +473,9 @@ class App:
         self._aircon.start()
 
         self._server_th.start()
-        self._cmd_th.start()
+
+        if self._tty:
+            self._cmd_th.start()
 
         while self._loop:
             time.sleep(1)
@@ -620,16 +625,19 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
               help='topic')
 @click.option('--pin', '-p', 'pin', type=int, default=DEF_PIN,
               help='pin number')
+@click.option('--tty', 'tty', is_flag=True, default=False,
+              help='tty command input')
 @click.option('--debug', '-d', 'debug', is_flag=True, default=False,
               help='debug flag')
-def main(target_temp, dev, button_header, topic, pin, debug):
+def main(target_temp, dev, button_header, topic, pin, tty, debug):
     logger = get_logger(__name__, debug)
     logger.debug('target_temp=%.1f', target_temp)
     logger.debug('dev=%s, button_header=%s', dev, button_header)
     logger.debug('topic=%s', topic)
     logger.debug('pin=%d', pin)
+    logger.debug('tty=%s', tty)
 
-    app = App(target_temp, dev, button_header, topic, pin, debug=debug)
+    app = App(target_temp, dev, button_header, topic, pin, tty, debug=debug)
     try:
         app.main()
     finally:
