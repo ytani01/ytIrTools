@@ -196,7 +196,7 @@ class AutoAircon(threading.Thread):
         # D
         d_ = (cur_temp - first_temp) / (cur_ts - first_ts)
 
-        self._logger.debug('(p_,i_,d_)=(%f, %f, %f)', p_, i_, d_)
+        self._logger.debug('(p_, i_, d_ )=(%f, %f, %f)', p_, i_, d_)
 
         k_p = self._kp * p_
         k_i = self._ki * i_
