@@ -133,7 +133,9 @@ class AutoAircon(threading.Thread):
         self._logger.debug('pin=%d', pin)
 
         self._aircon = Aircon(dev, button_header, pin, debug=self._debug)
-        self._temp = Temp(topic, debug=self._debug)
+
+        # self._temp = Temp(topic, debug=self._debug)
+        self._temp = Temp(topic)
 
         self._target_temp = target_temp
         self._remocon_temp = round(self._target_temp) - 1
@@ -361,8 +363,8 @@ class AutoAirconHandler(socketserver.StreamRequestHandler):
             self._logger.debug('msg=%a', msg)
         try:
             self.wfile.write(msg)
-        except:
-            pass
+        except Exception as e:
+            self._logger.debug('%s:%s.', type(e), e)
 
     def handle(self):
         self._logger.debug('')
@@ -436,7 +438,8 @@ class AutoAirconServer(socketserver.TCPServer):
 
         try:
             super().__init__(('', self._port), AutoAirconHandler)
-        except:
+        except Exception as e:
+            self._logger.debug('%s:%s.', type(e), e)
             return None
 
     def serve_forever(self):
@@ -541,7 +544,7 @@ class App:
         if param == '':
             ret = 'NG: no target temp'
             return ret
-        
+
         target_temp = float(param)
         self._aircon.set_target_temp(target_temp)
 
