@@ -31,7 +31,7 @@ class Temp:
         self._logger = get_logger(__class__.__name__, self._debug)
         self._logger.debug('topic=%s', topic)
 
-        self._active = True
+        # self._active = True
 
         self._bbt = Beebotte(topic, debug=self._debug)
 
@@ -39,7 +39,7 @@ class Temp:
         self._logger.debug('')
 
         self._bbt.start()
-        msg_type, msg_data = self.wait_msg(self._bbt.MSG_OK)
+        msg_type, msg_data = self._bbt.wait_msg(self._bbt.MSG_OK)
         if msg_type != self._bbt.MSG_OK:
             return
 
@@ -47,27 +47,14 @@ class Temp:
 
     def end(self):
         self._logger.debug('')
-        self._active = False
+        # self._active = False
         self._bbt.end()
         self._logger.debug('done')
-
-    def wait_msg(self, wait_msg_type):
-        self._logger.debug('wait_msg_type=%s', wait_msg_type)
-
-        (msg_type, msg_data) = (self._bbt.MSG_NONE, None)
-
-        while self._active:
-            msg_type, msg_data = self._bbt.get_msg(block=True, timeout=1)
-            if msg_type == wait_msg_type:
-                break
-
-        self._logger.debug('msg_type=%s, msg_data=%s', msg_type, msg_data)
-        return msg_type, msg_data
 
     def get_temp(self, block=True):
         self._logger.debug('block=%s', block)
 
-        msg_type, msg_data = self.wait_msg(self._bbt.MSG_DATA)
+        msg_type, msg_data = self._bbt.wait_msg(self._bbt.MSG_DATA)
         if msg_type != self._bbt.MSG_DATA:
             return 0, 0
 
@@ -143,12 +130,12 @@ class AutoAircon(threading.Thread):
 
         self._temp_hist = []  # [{'ts':ts1, 'temp':temp1}, ..]
 
+        self._ir_active = True
+
         self._kp = self.DEF_KP
         self._ki = self.DEF_KI
         self._kd = self.DEF_KD
         self._i = 0
-
-        self._ir_active = True
 
         self._loop = True
         super().__init__(daemon=True)
@@ -157,6 +144,7 @@ class AutoAircon(threading.Thread):
         self._logger.debug('')
         self._loop = False
         self._temp.end()
+        self._bbt_a.end()
         while self.is_alive():
             self._logger.debug('.')
             time.sleep(1)
@@ -503,7 +491,6 @@ class App:
                 print(json.dumps(ret))
             except KeyError:
                 self._logger.error('%s: no such command', cmdline[0])
-            
 
     def cmd_kp(self, param):
         self._logger.debug('param=%s', param)
@@ -541,7 +528,7 @@ class App:
         else:
             kd = self._aircon._kd
 
-        ret = {'rc':'OK', 'kd': kd}
+        ret = {'rc': 'OK', 'kd': kd}
         return ret
 
     def cmd_temp(self, param):

@@ -103,6 +103,13 @@
     "on_cool_auto_28":   "[prefix] [on]  [28a] [cool] [win_auto]    7 [28b]/",
     "on_cool_auto_27":   "[prefix] [on]  [27a] [cool] [win_auto]    7 [27b]/",
     "on_cool_auto_26":   "[prefix] [on]  [26a] [cool] [win_auto]    7 [26b]/",
+    "on_cool_auto_25":   "[prefix] [on]  [25a] [cool] [win_auto]    7 [25b]/",
+    "on_cool_auto_24":   "[prefix] [on]  [24a] [cool] [win_auto]    7 [24b]/",
+    "on_cool_auto_23":   "[prefix] [on]  [23a] [cool] [win_auto]    7 [23b]/",
+    "on_cool_auto_22":   "[prefix] [on]  [22a] [cool] [win_auto]    7 [22b]/",
+    "on_cool_auto_21":   "[prefix] [on]  [21a] [cool] [win_auto]    7 [21b]/",
+    "on_cool_auto_20":   "[prefix] [on]  [20a] [cool] [win_auto]    7 [20b]/",
+    "on_cool_auto_19":   "[prefix] [on]  [19a] [cool] [win_auto]    7 [19b]/",
     "on_cool_auto_18":   "[prefix] [on]  [18a] [cool] [win_auto]    7 [18b]/",
     
     "on_dry_auto_21":    "[prefix] [on]  [21a] [dry]  [win_auto]    5 [21b]/",
