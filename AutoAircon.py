@@ -144,7 +144,6 @@ class AutoAircon(threading.Thread):
         self._logger.debug('')
         self._loop = False
         self._temp.end()
-        self._bbt_a.end()
         while self.is_alive():
             self._logger.debug('.')
             time.sleep(1)
@@ -335,7 +334,7 @@ class AutoAirconHandler(socketserver.StreamRequestHandler):
                 return
             else:
                 self._logger.debug('net_data=%a', net_data)
-            if net_data == b'':
+            if net_data == b'' or net_data == b'\x04':
                 self._active = False
                 break
 
@@ -442,7 +441,7 @@ class App:
             'ttemp': self.cmd_target_temp,
             'on':   self.cmd_on,
             'off':  self.cmd_off,
-            'quit': self.cmd_quit
+            'shutdown': self.cmd_shutdown
         }
 
         self._aircon = AutoAircon(target_temp, dev, button_header, topic, pin,
@@ -488,9 +487,11 @@ class App:
 
             try:
                 ret = self._cmd[cmdline[0]](cmdline[1])
-                print(json.dumps(ret))
             except KeyError:
                 self._logger.error('%s: no such command', cmdline[0])
+                continue
+            
+            print(json.dumps(ret))
 
     def cmd_kp(self, param):
         self._logger.debug('param=%s', param)
@@ -535,7 +536,7 @@ class App:
         self._logger.debug('param=%s', param)
 
         if len(self._aircon._temp_hist) == 0:
-            ret = {'rc': 'NG',  'cur_temp': ''}
+            ret = {'rc': 'NG', 'cur_temp': None}
         else:
             ret = {'rc': 'OK', 'cur_temp': self._aircon._temp_hist[-1]['temp']}
         return ret
@@ -587,12 +588,12 @@ class App:
         ret = {'rc': 'OK', 'msg': 'off'}
         return ret
 
-    def cmd_quit(self, param):
+    def cmd_shutdown(self, param):
         self._logger.debug('param=%s', param)
 
         self._loop = False
 
-        ret = {'rc': 'OK', 'msg': 'quit'}
+        ret = {'rc': 'OK', 'msg': 'shutdown'}
         return ret
 
 
