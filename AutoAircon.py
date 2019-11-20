@@ -13,7 +13,6 @@ from IrSend import IrSend
 from ytBeebotte import Beebotte
 import threading
 import socketserver
-import socket
 import json
 import time
 
@@ -31,23 +30,22 @@ class Temp:
         self._logger = get_logger(__class__.__name__, self._debug)
         self._logger.debug('topic=%s', topic)
 
-        # self._active = True
+        self._topic = topic
 
-        self._bbt = Beebotte(topic, debug=self._debug)
+        # self._bbt = Beebotte(topic, debug=self._debug)
+        self._bbt = Beebotte(topic, debug=False)
 
     def start(self):
         self._logger.debug('')
 
         self._bbt.start()
-        msg_type, msg_data = self._bbt.wait_msg(self._bbt.MSG_OK)
-        if msg_type != self._bbt.MSG_OK:
-            return
 
         self._bbt.subscribe()
 
     def end(self):
         self._logger.debug('')
-        # self._active = False
+        self._bbt.publish(self._topic, 0)  # dummy before disconnect
+        time.sleep(2)
         self._bbt.end()
         self._logger.debug('done')
 
@@ -102,14 +100,14 @@ class Aircon:
 class AutoAircon(threading.Thread):
     DSEC_MAX = 60  # sec
 
-    DEF_KP = 1.6
-    DEF_KI = 0.002
-    DEF_KD = 60
+    DEF_KP = 2.5
+    DEF_KI = 0.03
+    DEF_KD = 100
 
-    K_I_MAX = 3.0
+    K_I_MAX = 5.0
 
-    REMOCON_TEMP_MIN = 20
-    REMOCON_TEMP_MAX = 30
+    REMOCON_TEMP_MIN = 21
+    REMOCON_TEMP_MAX = 29
 
     def __init__(self, target_temp, dev, button_header, topic, pin,
                  debug=False):
@@ -122,11 +120,11 @@ class AutoAircon(threading.Thread):
 
         self._aircon = Aircon(dev, button_header, pin, debug=self._debug)
 
-        # self._temp = Temp(topic, debug=self._debug)
-        self._temp = Temp(topic)
+        self._temp = Temp(topic, debug=self._debug)
+        # self._temp = Temp(topic)
 
         self._target_temp = target_temp
-        self._remocon_temp = round(self._target_temp) - 1
+        self._remocon_temp = round(self._target_temp)
 
         self._temp_hist = []  # [{'ts':ts1, 'temp':temp1}, ..]
 
@@ -379,16 +377,13 @@ class AutoAirconServer(socketserver.TCPServer):
     def __init__(self, cmd, port=DEF_PORT, debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
-        self._logger.debug('cmd=%s, port=%d', cmd, port)
+        self._logger.debug('cmd=')
+        for c in cmd:
+            self._logger.debug('  %s', c)
+        self._logger.debug('port=%d', port)
 
         self._cmd = cmd
         self._port = port
-
-        while self.is_port_in_use(self._port):
-            self._logger.warning('port:%d in use .. waiting',
-                                 self._port)
-            time.sleep(1)
-        self._logger.debug('port:%d is free', self._port)
 
         flag_ok = False
         while not flag_ok:
@@ -409,12 +404,6 @@ class AutoAirconServer(socketserver.TCPServer):
 
     def end(self):
         self._logger.debug('')
-
-    def is_port_in_use(self, port):
-        self._logger.debug('port=%d', port)
-
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            return s.connect_ex(('localhost', port)) == 0
 
 
 class App:
@@ -477,7 +466,11 @@ class App:
         self._logger.debug('')
 
         while self._loop:
-            cmdline = input().split()
+            try:
+                cmdline = input().split()
+            except EOFError:
+                cmdline = ''
+
             self._logger.debug('cmdline=%s', cmdline)
             if len(cmdline) == 0:
                 continue
@@ -490,7 +483,7 @@ class App:
             except KeyError:
                 self._logger.error('%s: no such command', cmdline[0])
                 continue
-            
+
             print(json.dumps(ret))
 
     def cmd_kp(self, param):
@@ -560,7 +553,7 @@ class App:
         if param != '':
             target_temp = float(param)
             self._aircon._target_temp = target_temp
-            self._aircon._remocon_temp = round(target_temp) - 1
+            self._aircon._remocon_temp = round(target_temp)
             self._aircon._i = 0
             self._aircon.irsend_temp(target_temp, force=True)
         else:
