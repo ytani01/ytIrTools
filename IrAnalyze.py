@@ -12,13 +12,14 @@ from IrConfig import IrConfig
 import json
 from MyLogger import get_logger
 
+
 class IrAnalyze:
     """
     raw_data = [[pulse1, space1], [pulse2, space2], ... ]
     """
     RAW_DATA_LEN_MIN = 6
 
-    SIG_LONG =  99999  # usec
+    SIG_LONG = 99999   # usec
     SIG_END  = 999999  # usec
 
     SIG_SYM = {
@@ -600,6 +601,8 @@ DEF_PIN = 27
 
 import click
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+
+
 @click.command(context_settings=CONTEXT_SETTINGS,
                help='IR signal analyzer')
 @click.argument('pin', type=int, default=DEF_PIN)

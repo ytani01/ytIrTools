@@ -346,7 +346,7 @@ class App:
             self.msgq.put(msg)
             self.end_main()
             return
-            
+
         for i in range(self.n):
             if self.n > 1:
                 print('[%d]' % (i + 1))
@@ -475,6 +475,8 @@ class App:
 #####
 import click
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+
+
 @click.command(context_settings=CONTEXT_SETTINGS,
                help='IR signal transmitter')
 @click.argument('args', type=str, nargs=-1)

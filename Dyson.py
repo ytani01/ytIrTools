@@ -52,6 +52,8 @@ class Dyson:
 #####
 import click
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+
+
 @click.command(context_settings=CONTEXT_SETTINGS,
                help='IR signal transmitter')
 @click.argument('args', type=str, nargs=-1)

@@ -360,6 +360,7 @@ class IrConfig:
         try:
             data = json.loads(s)
         except Exception as e:
+            self.logger.debug('%s:%s.', type(e), e)
             return None
         self.logger.debug('data=%s', data)
         return data

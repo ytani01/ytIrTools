@@ -324,6 +324,8 @@ DEF_PIN = 27
 
 import click
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+
+
 @click.command(context_settings=CONTEXT_SETTINGS,
                help='IR signal receiver')
 @click.argument('pin', type=int, default=DEF_PIN)

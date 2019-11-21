@@ -28,12 +28,16 @@ class App:
                            cmd_text, host, port)
 
         self._cmd_text = cmd_text
-        self._logger.debug('_cmd_text=%s', self._cmd_text)
+        self._logger.debug('_cmd_text=\'%s\'', self._cmd_text)
 
         self._tn = telnetlib.Telnet(host, port)
 
     def main(self):
         self._logger.debug('')
+
+        if self._cmd_text == '':
+            self._logger.error('no command')
+            return
 
         self._tn.write(self._cmd_text.encode('utf-8'))
 
@@ -51,7 +55,12 @@ class App:
         rep_str = rep.decode('utf-8')
         json_data = json.loads(rep_str)
         json_str = json.dumps(json_data)
-        print(json_str)
+        self._logger.debug('json_str=%s', json_str)
+
+        for k in json_data:
+            if k == 'rc':
+                continue
+            print('%s: %s' % (k, json_data[k]))
 
     def end(self):
         self._logger.debug('')
