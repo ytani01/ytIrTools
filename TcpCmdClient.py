@@ -58,8 +58,8 @@ class App:
         self._logger.debug('json_str=%s', json_str)
 
         for k in json_data:
-            if k == 'rc':
-                continue
+            # if k == 'rc':
+            #     continue
             print('%s: %s' % (k, json_data[k]))
 
     def end(self):
