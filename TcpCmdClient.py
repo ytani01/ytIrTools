@@ -86,7 +86,7 @@ class App:
             json_data = json.loads(rep_str)
             json_str = json.dumps(json_data, indent=2, ensure_ascii=False)
             print(json_str)
-                
+
         except json.decoder.JSONDecodeError:
             print(rep_str)
 

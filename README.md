@@ -1,10 +1,10 @@
 # ytIrTools for Raspberry Pi
-### pigpio + python3 による、赤外線リモコン制御・解析ツール
+### Raspberry Pi + pigpio + python3 による、赤外線リモコン制御・解析ツール
 
 ## 概要
 
 * LIRCなどは使わず、pigpioのPythonライブラリで作成 -- 高性能で高い柔軟性
-* 正確な信号解析。
+* 正確な信号解析。(IrAnalyze.py)
 * 信号フォーマットは、AEHA,SONY,NEC以外に、DYSON,BOSEなどの一部機器にも対応
 * 送受信を同時に行える。
 * 赤外線送受信につかうGPIOピンを(PWM用の12, 13, 18以外で)自由に選べる
@@ -30,6 +30,7 @@ $ sudo pigpiod -t 0
 ※オプション「-t 0」がないと、不安定になる(?)
 
 自動起動する場合は、crontabを設定。(crontab.sample参照)
+
 ※(注意) コマンド "crontab crontab.sample" を実行すると、
 今までの crontabが全て消去されます！
 

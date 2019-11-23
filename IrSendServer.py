@@ -3,7 +3,7 @@
 # (c) 2019 Yoichi Tanibayashi
 #
 """
-IrServer.py
+IrSendServer.py
 
 """
 __author__ = 'Yoichi Tanibayashi'
@@ -276,7 +276,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
 @click.command(context_settings=CONTEXT_SETTINGS,
-               help='IR signal server')
+               help='IR signal send server')
 @click.option('--port', 'port', type=int,
               help='port number')
 @click.option('--pin', 'pin', type=int,
