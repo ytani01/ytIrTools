@@ -5,7 +5,7 @@
 """
 TcpCmdClient.py
 
-TCP client that send one string and get json string
+TCP client that send command strings and get reply string
 """
 __author__ = 'Yoichi Tanibayashi'
 __date__   = '2019'
@@ -20,26 +20,23 @@ DEF_HOST = 'localhost'
 DEF_PORT = 12351
 
 
-class App:
-    def __init__(self, cmd_text, host, port, debug=False):
+class TcpCmdClient:
+    def __init__(self, host, port, debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
-        self._logger.debug('cmd_text=%s, host=%s, port=%d',
-                           cmd_text, host, port)
+        self._logger.debug('host=%s, port=%s', host, port)
 
-        self._cmd_text = cmd_text
-        self._host = host
-        self._port = port
+        self._svr_host = host
+        self._svr_port = port
 
-    def main(self):
+    def end(self):
         self._logger.debug('')
 
-        if self._cmd_text == '':
-            self._logger.error('no command')
-            return
+    def send_recv(self, cmd_text):
+        self._logger.debug('cmd_text=%s', cmd_text)
 
-        with telnetlib.Telnet(self._host, self._port) as tn:
-            out_data = self._cmd_text.encode('utf-8')
+        with telnetlib.Telnet(self._svr_host, self._svr_port) as tn:
+            out_data = cmd_text.encode('utf-8')
             self._logger.debug('out_data=%a', out_data)
 
             tn.write(out_data)
@@ -62,6 +59,28 @@ class App:
 
         rep_str = rep.decode('utf-8').strip()
         self._logger.debug('rep_str=\'%s\'', rep_str)
+        return rep_str
+
+
+class App:
+    def __init__(self, cmd_text, host, port, debug=False):
+        self._debug = debug
+        self._logger = get_logger(__class__.__name__, self._debug)
+        self._logger.debug('cmd_text=%s, host=%s, port=%d',
+                           cmd_text, host, port)
+
+        self._cmd_text = cmd_text
+
+        self._cl = TcpCmdClient(host, port, debug=self._debug)
+
+    def main(self):
+        self._logger.debug('')
+
+        if self._cmd_text == '':
+            self._logger.error('no command')
+            return
+
+        rep_str = self._cl.send_recv(self._cmd_text)
 
         try:
             json_data = json.loads(rep_str)
@@ -73,6 +92,7 @@ class App:
 
     def end(self):
         self._logger.debug('')
+        self._cl.end()
 
 
 import click

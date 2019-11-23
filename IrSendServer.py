@@ -21,9 +21,6 @@ import time
 from MyLogger import get_logger
 
 
-DEF_PIN = 22
-
-
 class IrSendHandler(socketserver.StreamRequestHandler):
     DEF_HANDLE_TIMEOUT = 5  # sec
 
@@ -103,9 +100,16 @@ class IrSendHandler(socketserver.StreamRequestHandler):
                 cmdline.append('')
                 self._logger.debug('cmdline=%s', cmdline)
 
-            cmdline = cmdline[:2]
-            self._svr._cmdq.put(cmdline)
-            self.net_write(json.dumps(cmdline) + '\r\n')
+            p1, p2 = cmdline[:2]
+
+            if p1 == self._svr.CMD['LIST']:
+                ret = self.cmd_devlist()
+            elif p2 == self._svr.CMD['LIST'] or p2 == '':
+                ret = self.cmd_buttonlist(p1)
+            else:
+                self._svr._cmdq.put([p1, p2])
+                ret = {'rc': 'OK'}
+            self.net_write(json.dumps(ret) + '\r\n')
 
         self._logger.debug('done')
 
@@ -115,16 +119,38 @@ class IrSendHandler(socketserver.StreamRequestHandler):
         self._logger.debug('_active=%s', self._active)
         return super().finish()
 
+    def cmd_devlist(self):
+        self._logger.debug('')
+
+        devlist = self._svr._irsend.get_dev_list()
+        ret = {'rc': 'OK', 'data': devlist}
+        return ret
+
+    def cmd_buttonlist(self, dev_name):
+        self._logger.debug('dev_name=%s', dev_name)
+
+        buttonlist = self._svr._irsend.get_macro_and_button(dev_name)
+        ret = {'rc': 'OK', 'data': buttonlist}
+        return ret
+
+    def cmd_help(self):
+        self._logger.debug('')
+
 
 class IrSendServer(socketserver.ThreadingTCPServer):
     DEF_PORT = 12352
 
-    def __init__(self, cmdq, port, debug=False):
+    CMD = {'LIST': '@list',
+           'SLEEP': '@sleep',
+           'END': '@end'}
+
+    def __init__(self, cmdq, irsend, port, debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
         self._logger.debug('port=%s', port)
 
         self._cmdq = cmdq
+        self._irsend = irsend
         self._port = port
 
         self._active = False
@@ -147,6 +173,7 @@ class IrSendServer(socketserver.ThreadingTCPServer):
         self._logger.debug('done')
 
     """
+    # self.allow_reuse_address = True としてるため、以下は不要
     def server_bind(self):
         self._logger.debug('')
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -187,10 +214,6 @@ class App:
       [dev_name, CMD['LIST']] ... ボタン名リスト
       [CMD['END'], '']        ... 終了(無視)
     """
-    CMD = {'LIST': '@list',
-           'SLEEP': '@sleep',
-           'END': '@end'}
-
     def __init__(self, port, pin, debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
@@ -209,7 +232,8 @@ class App:
         self._cmdq = queue.Queue()
 
         self._irsend = IrSend(self._pin, load_conf=True, debug=self._debug)
-        self._svr = IrSendServer(self._cmdq, self._port, self._debug)
+        self._svr = IrSendServer(self._cmdq, self._irsend, self._port,
+                                 self._debug)
         self._svr_th = threading.Thread(target=self._svr.serve_forever,
                                         daemon=True)
 
@@ -222,31 +246,20 @@ class App:
             cmdline = self._cmdq.get()
             self._logger.debug('cmdline=%s', cmdline)
 
-            if cmdline[0] == self.CMD['END']:
+            if cmdline[0] == self._svr.CMD['END']:
                 self._logger.debug('cmd:END .. ignored')
                 break
 
-            if cmdline[0] == self.CMD['SLEEP']:
+            if cmdline[0] == self._svr.CMD['SLEEP']:
                 sleep_sec = float(cmdline[1])
                 self._logger.debug('cmd:SLEEP %ssec', sleep_sec)
                 time.sleep(sleep_sec)
                 continue
 
-            if cmdline[0] == self.CMD['LIST']:
-                self._logger.debug('cmd:LIST')
-                # dev_list = self.irsend.get_dev_list()
-                continue
-
-            if cmdline[1] == self.CMD['LIST'] or cmdline == '':
-                dev_name = cmdline[0]
-                self._logger.debug('%s cmd:LIST', dev_name)
-                # m_b = self.irsend.get_macro_and_button(dev_name)
-                continue
-
-            # dev_name button
+            # send IR signal
             dev_name, button_name = cmdline
             self._logger.debug('%s %s', dev_name, button_name)
-            # irsend(dev_name, button_name)
+            self._irsend.send(dev_name, button_name)
             time.sleep(0.1)
 
     def end(self):
