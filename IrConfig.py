@@ -280,8 +280,7 @@ class IrConfig:
 
         Returns
         -------
-        d_ent: dict
-          {'file': file_name, 'data': conf_data}
+        d_ent: {'file': conf_file_name, 'data': conf_data}
 
         """
         self.logger.debug('dev_name=%s', dev_name)

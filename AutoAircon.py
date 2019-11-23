@@ -123,7 +123,10 @@ class Aircon:
     def irsend(self, button):
         self._logger.debug('button=%s', button)
 
-        self._irsend.send(self._dev, button)
+        try:
+            self._irsend.send(self._dev, button)
+        except Exception as e:
+            self._logger.error('%s:%s.', type(e), e)
 
     def irsend_temp(self, temp):
         self._logger.debug('temp=%d', temp)
@@ -232,6 +235,7 @@ class AutoAircon(threading.Thread):
             self._stat.publish_param({'active': self._ir_active})
 
             ts, temp = self._temp.get_temp()
+            self._logger.debug('ts=%s, temp=%s', ts, temp)
             if ts == 0:
                 self._logger.debug('ts=%d', ts)
                 break

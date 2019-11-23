@@ -16,11 +16,6 @@ import time
 from MyLogger import get_logger
 
 
-#####
-DEF_PIN = 22
-
-
-#####
 class WaveForm:
     OFF       = 0
     ON        = 1
@@ -44,8 +39,8 @@ class WaveForm:
 
     def append_pulse(self, onoff, usec):
         if onoff not in self.ONOFF:
-            raise ValueError('onoff[' + str(onoff)
-                             + '] must be WaveForm.ON or WaveForm.OFF')
+            msg = 'onoff[%s] must be WaveForm.ON or WaveForm.OFF' % str(onoff)
+            raise ValueError(msg)
         if usec <= 0:
             raise ValueError('usec[' + str(usec) + '] must be > 0')
         self.logger.debug('onoff:%-3s, usec=%s', self.ONOFF_STR[onoff], usec)
@@ -105,7 +100,6 @@ class WaveForm:
             self.append_pulse_list1([on_usec, off_usec])
 
 
-#####
 class Wave(WaveForm):
     PIN_PWM = [12, 13, 18]
 
@@ -141,6 +135,8 @@ class Wave(WaveForm):
 
 
 class IrSend:
+    DEF_PIN = 22
+
     DEF_FREQ = 38000      # 38KHz
     DEF_DUTY = (1 / 3.0)  # 1/3
 
@@ -295,6 +291,33 @@ class IrSend:
             return False
         return self.send_raw_data(raw_data)
 
+    def get_dev_list(self):
+        self.logger.debug('')
+
+        dev_list = []
+        for d in self.irconf.data:
+            dev_list.append(d['data']['dev_name'])
+
+        return dev_list
+
+    def get_macro_and_button(self, dev_name):
+        """
+        Returns
+        -------
+        ret: {'macro': {'[m1]': 'mdata1', '[m2]': 'mdata2'},
+              'buttons': {'b1': 'bdata1', 'b2': 'bdata2'}}
+        """
+        self.logger.debug('dev_name=%s', dev_name)
+
+        dev = self.irconf.get_dev(dev_name)
+        if dev is None:
+            self.logger.warning('%s: no such device', dev_name)
+            return None
+
+        ret = {'macro': dev['data']['macro'],
+               'buttons': dev['data']['buttons']}
+        return ret
+
 
 #####
 import threading
@@ -447,25 +470,25 @@ class App:
     def show_dev_list(self):
         self.logger.debug('')
 
-        for d in self.irsend.irconf.data:
-            print(' %s' % d['data']['dev_name'])
+        for d in self.irsend.get_dev_list():
+            print('%s' % d)
 
     def show_button_list(self, dev_name):
         self.logger.debug('dev_name=%s', dev_name)
 
-        dev = self.irsend.irconf.get_dev(dev_name)
-        if dev is None:
+        ret = self.irsend.get_macro_and_button(dev_name)
+        if ret is None:
             print('%s: no such device' % dev_name)
             return
-        print()
+        self.logger.debug('ret=%s', ret)
 
-        macro = dev['data']['macro']
+        macro = ret['macro']
         for m in macro:
             if macro[m] != '':
                 print(' %-17s : %s' % (m, macro[m]))
         print()
 
-        buttons = dev['data']['buttons']
+        buttons = ret['buttons']
         for b in buttons:
             if buttons[b] != '':
                 print(' %-17s : %s' % (b, buttons[b]))
@@ -480,7 +503,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.command(context_settings=CONTEXT_SETTINGS,
                help='IR signal transmitter')
 @click.argument('args', type=str, nargs=-1)
-@click.option('--pin', '-p', 'pin', type=int, default=DEF_PIN,
+@click.option('--pin', '-p', 'pin', type=int, default=IrSend.DEF_PIN,
               help='pin number')
 @click.option('-n', 'n', type=int, default=1)
 @click.option('--interval', '-i', 'interval', type=float, default=0.0)

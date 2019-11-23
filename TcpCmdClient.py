@@ -28,9 +28,8 @@ class App:
                            cmd_text, host, port)
 
         self._cmd_text = cmd_text
-        self._logger.debug('_cmd_text=\'%s\'', self._cmd_text)
-
-        self._tn = telnetlib.Telnet(host, port)
+        self._host = host
+        self._port = port
 
     def main(self):
         self._logger.debug('')
@@ -39,32 +38,41 @@ class App:
             self._logger.error('no command')
             return
 
-        self._tn.write(self._cmd_text.encode('utf-8'))
+        with telnetlib.Telnet(self._host, self._port) as tn:
+            out_data = self._cmd_text.encode('utf-8')
+            self._logger.debug('out_data=%a', out_data)
 
-        rep = b''
-        while True:
-            in_data = self._tn.read_until(b'\r\n')
-            self._logger.debug('in_data=%a', in_data)
+            tn.write(out_data)
 
-            rep += in_data
-            if b'\r\n' in in_data:
-                break
+            rep = b''
+            while True:
+                in_data = b''
+                try:
+                    in_data = tn.read_until(b'__dummy__', timeout=0.5)
+                    self._logger.debug('in_data=%a', in_data)
+                except Exception as e:
+                    self._logger.warning('%s: %s.', type(e), e)
+                    break
 
-        self._logger.debug('rep=%a', rep)
+                if in_data == b'':
+                    break
 
-        rep_str = rep.decode('utf-8')
-        json_data = json.loads(rep_str)
-        json_str = json.dumps(json_data)
-        self._logger.debug('json_str=%s', json_str)
+                rep += in_data
+                self._logger.debug('rep=%a', rep)
 
-        for k in json_data:
-            # if k == 'rc':
-            #     continue
-            print('%s: %s' % (k, json_data[k]))
+        rep_str = rep.decode('utf-8').strip()
+        self._logger.debug('rep_str=\'%s\'', rep_str)
+
+        try:
+            json_data = json.loads(rep_str)
+            json_str = json.dumps(json_data, indent=2, ensure_ascii=False)
+            print(json_str)
+                
+        except json.decoder.JSONDecodeError:
+            print(rep_str)
 
     def end(self):
         self._logger.debug('')
-        self._tn.close()
 
 
 import click
