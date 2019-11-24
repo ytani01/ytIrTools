@@ -33,7 +33,7 @@ class TcpCmdClient:
         self._logger.debug('')
 
     def send_recv(self, cmd_text):
-        self._logger.debug('cmd_text=%s', cmd_text)
+        self._logger.debug('cmd_text=%a', cmd_text)
 
         with telnetlib.Telnet(self._svr_host, self._svr_port) as tn:
             out_data = cmd_text.encode('utf-8')
@@ -76,10 +76,6 @@ class App:
     def main(self):
         self._logger.debug('')
 
-        if self._cmd_text == '':
-            self._logger.error('no command')
-            return
-
         rep_str = self._cl.send_recv(self._cmd_text)
 
         try:
@@ -101,23 +97,22 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 @click.command(context_settings=CONTEXT_SETTINGS,
                help='TcpCmdClient')
-@click.argument('cmd_text1', type=str)
-@click.argument('cmd_text2', type=str, nargs=-1)
+@click.argument('arg', type=str, nargs=-1)
 @click.option('--svrhost', '-s', 'svrhost', type=str, default=DEF_HOST,
               help='server hostname')
 @click.option('--port', '-p', 'port', type=int, default=DEF_PORT,
               help='server port nubmer')
 @click.option('--debug', '-d', 'debug', is_flag=True, default=False,
               help='debug flag')
-def main(cmd_text1, cmd_text2, svrhost, port, debug):
+def main(arg, svrhost, port, debug):
     logger = get_logger(__name__, debug)
-    logger.debug('cmd_text1=%s, cmd_text2=%s, svrhost=%s, port=%d',
-                 cmd_text1, cmd_text2, svrhost, port)
+    logger.debug('arg=%s, svrhost=%s, port=%d',
+                 arg, svrhost, port)
 
-    cmd_text = ' '.join([cmd_text1] + list(cmd_text2))
-    logger.debug('cmd_text=%s', cmd_text)
+    arg_str = ' '.join(list(arg))
+    logger.debug('arg_str=%s', arg_str)
 
-    app = App(cmd_text, svrhost, port, debug=debug)
+    app = App(arg_str, svrhost, port, debug=debug)
     try:
         app.main()
     finally:

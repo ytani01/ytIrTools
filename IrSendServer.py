@@ -104,6 +104,16 @@ class IrSendHandler(socketserver.StreamRequestHandler):
 
             if p1 == self._svr.CMD['LIST']:
                 ret = self.cmd_devlist()
+            elif p1 == self._svr.CMD['SLEEP']:
+                try:
+                    sec = float(p2)
+                except ValueError:
+                    msg = '%a: invalid sleep sec .. ignored' % p2
+                    ret = {'rc': 'NG', 'data': msg}
+                    self._logger.warning(msg)
+                else:
+                    self._svr._cmdq.put([p1, p2])
+                    ret = {'rc': 'OK'}
             elif p2 == self._svr.CMD['LIST'] or p2 == '':
                 ret = self.cmd_buttonlist(p1)
             else:
@@ -130,7 +140,11 @@ class IrSendHandler(socketserver.StreamRequestHandler):
         self._logger.debug('dev_name=%s', dev_name)
 
         buttonlist = self._svr._irsend.get_macro_and_button(dev_name)
-        ret = {'rc': 'OK', 'data': buttonlist}
+        self._logger.debug('buttonlist=%s', buttonlist)
+        if buttonlist is None:
+            ret = {'rc': 'NG', 'data': '%s: no such device' % dev_name}
+        else:
+            ret = {'rc': 'OK', 'data': buttonlist}
         return ret
 
     def cmd_help(self):
@@ -247,27 +261,28 @@ class App:
             self._logger.debug('cmdline=%s', cmdline)
 
             if cmdline[0] == self._svr.CMD['END']:
-                self._logger.debug('cmd:END .. ignored')
-                break
+                msg = 'cmd:END .. ignored'
+                self._logger.info(msg)
+                continue
 
             if cmdline[0] == self._svr.CMD['SLEEP']:
                 sleep_sec = float(cmdline[1])
-                self._logger.debug('cmd:SLEEP %ssec', sleep_sec)
+                msg = 'cmd:SLEEP %ssec' % sleep_sec
+                self._logger.info(msg)
                 time.sleep(sleep_sec)
                 continue
 
             # send IR signal
             dev_name, button_name = cmdline
-            self._logger.debug('%s %s', dev_name, button_name)
+            msg = '%s %s' % (dev_name, button_name)
+            self._logger.info(msg)
             self._irsend.send(dev_name, button_name)
             time.sleep(0.1)
 
     def end(self):
-        """
-        終了処理
-        """
-        self._svr.end()
         self._logger.debug('')
+        self._svr.end()
+        self._logger.debug('done')
 
 
 #####
@@ -293,7 +308,7 @@ def main(port, pin, debug):
     finally:
         logger.debug('finally')
         app.end()
-        logger.debug('done')
+        logger.info('end')
 
 
 if __name__ == '__main__':

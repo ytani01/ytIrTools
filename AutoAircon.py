@@ -32,7 +32,7 @@ __author__ = 'Yoichi Tanibayashi'
 __date__   = '2019'
 
 
-from IrSend import IrSend
+from IrSendClient import IrSendClient
 from ytBeebotte import Beebotte
 import threading
 import queue
@@ -118,13 +118,16 @@ class Aircon:
                            self._dev, self._button_header, self._pin)
 
         # self._irsend = IrSend(self._pin, load_conf=True, debug=self._debug)
-        self._irsend = IrSend(self._pin, load_conf=True, debug=False)
+        self._irsend = IrSendClient('localhost', debug=False)
 
     def irsend(self, button):
         self._logger.debug('button=%s', button)
 
+        cmd_str = '%s %s' % (self._dev, button)
+        self._logger.debug('cmd_str=%s', cmd_str)
+
         try:
-            self._irsend.send(self._dev, button)
+            self._irsend.send_recv(cmd_str)
         except Exception as e:
             self._logger.error('%s:%s.', type(e), e)
 
@@ -232,8 +235,6 @@ class AutoAircon(threading.Thread):
         self._temp.start()
 
         while self._loop:
-            self._stat.publish_param({'active': self._ir_active})
-
             ts, temp = self._temp.get_temp()
             self._logger.debug('ts=%s, temp=%s', ts, temp)
             if ts == 0:
@@ -242,7 +243,8 @@ class AutoAircon(threading.Thread):
             if temp == self._temp.TEMP_END:
                 self._logger.debug('temp=TEMP_END')
                 break
-            self._stat.publish_param({'temp': temp,
+            self._stat.publish_param({'active': self._ir_active,
+                                      'temp': temp,
                                       'ttemp': self._target_temp,
                                       'rtemp': self._remocon_temp})
 
@@ -368,9 +370,8 @@ class AutoAircon(threading.Thread):
         if param != '':
             remocon_temp = int(param)
             self._remocon_temp = remocon_temp
-            self.irsend_temp(remocon_temp, force=True)
-
             self._stat.publish_param({'rtemp': self._remocon_temp})
+            self.irsend_temp(remocon_temp, force=True)
         else:
             remocon_temp = self._remocon_temp
 
@@ -385,10 +386,10 @@ class AutoAircon(threading.Thread):
             self._target_temp = target_temp
             self._i = 0
             self._remocon_temp = round(target_temp)
-            self.irsend_temp(self._remocon_temp, force=True)
-
             self._stat.publish_param({'ttemp': self._target_temp,
                                       'rtemp': self._remocon_temp})
+
+            self.irsend_temp(self._remocon_temp, force=True)
         else:
             target_temp = self._target_temp
 
@@ -399,10 +400,10 @@ class AutoAircon(threading.Thread):
         self._logger.debug('param=%s', param)
 
         self._ir_active = True
+        self._stat.publish_param({'active': self._ir_active})
+
         self.irsend_temp(force=True)
         self._i = 0
-
-        self._stat.publish_param({'active': self._ir_active})
 
         ret = {'rc': 'OK', 'msg': 'on'}
         return ret
@@ -411,9 +412,9 @@ class AutoAircon(threading.Thread):
         self._logger.debug('param=%s', param)
 
         self._ir_active = False
-        self.irsend_temp(0, force=True)
-
         self._stat.publish_param({'active': self._ir_active})
+
+        self.irsend_temp(0, force=True)
 
         ret = {'rc': 'OK', 'msg': 'off'}
         return ret
@@ -533,6 +534,11 @@ class AutoAircon(threading.Thread):
 
         self._logger.debug('_ir_active=%s', self._ir_active)
         if self._ir_active or force:
+            self._ir_active = True
+            if temp == 0:
+                self._ir_active = False
+            self._logger.debug('_ir_active=%s', self._ir_active)
+            self._stat.publish_param({'active': self._ir_active})
             self._aircon.irsend_temp(temp)
 
 
