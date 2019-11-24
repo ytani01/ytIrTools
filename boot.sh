@@ -21,8 +21,8 @@ LOG_IRSENDSERVER=${LOGDIR}/${NAME_IRSENDSERVER}.log
 LOG_AUTOAIRCON=${LOGDIR}/${NAME_AUTOAIRCON}.log
 
 PID_PIGPIOD=`pgrep ${NAME_PIGPIOD}`
-PID_IRSENDSERVER=`pgrep -f ${NAME_IRSENDSERVER}`
-PID_AUTOAIRCON=`pgrep -f ${NAME_AUTOAIRCON}`
+PID_IRSENDSERVER=`pgrep -f python.\*${NAME_IRSENDSERVER}.py`
+PID_AUTOAIRCON=`pgrep -f python.\*${NAME_AUTOAIRCON}.py`
 
 if [ X$PID_PIGPIOD = X ]; then
     ts_echo "start pigpiod"
@@ -30,7 +30,7 @@ if [ X$PID_PIGPIOD = X ]; then
     sleep 3
 fi
 
-while [ `ifconfig -a | grep inet | grep -v inet6 | grep -v 127.0.0 | wc -l` -eq 0 ]; do
+while [ `/sbin/ifconfig -a | grep inet | grep -v inet6 | grep -v 127.0.0 | wc -l` -eq 0 ]; do
     ts_echo ".."
     sleep 1
 done
