@@ -30,6 +30,11 @@ if [ X$PID_PIGPIOD = X ]; then
     sleep 3
 fi
 
+while [ `ifconfig -a | grep inet | grep -v inet6 | grep -v 127.0.0 | wc -l` -eq 0 ]; do
+    ts_echo ".."
+    sleep 1
+done
+
 if [ X$PID_IRSENDSERVER = X ]; then
     mv -f ${LOG_IRSENDSERVER} ${LOG_IRSENDSERVER}.1
     ts_echo "start IrSendServer"
