@@ -24,7 +24,7 @@
 
 ### IMPORTANT !! ###
 # Don't use PWM pins(12, 13, 18)
-#XXX@reboot		sleep 2; pigs m 12 0 m 13 0 m 18 5
+#@reboot		sleep 2; pigs m 12 0 m 13 0 m 18 5
 
 @reboot			${HOME}/bin/boot.sh > ${HOME}/tmp/boot.log 2>&1 &
 */10 * * * *		${HOME}/bin/boot.sh >> ${HOME}/tmp/boot.log 2>&1 &
