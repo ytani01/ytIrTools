@@ -3,9 +3,7 @@
 # (c) 2019 Yoichi Tanibayashi
 #
 """
-TcpCmdClient.py
-
-TCP client that send command strings and get reply string
+IrSendClient
 """
 __author__ = 'Yoichi Tanibayashi'
 __date__   = '2019'
@@ -17,10 +15,10 @@ import json
 from MyLogger import get_logger
 
 
-DEF_SVR_HOST = 'localhost'
-
-
 class IrSendClient(TcpCmdClient):
+    DEF_SVR_HOST = 'localhost'
+    DEF_SVR_PORT = IrSendServer.DEF_PORT
+    
     def __init__(self, host=None, port=None, debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
@@ -28,11 +26,11 @@ class IrSendClient(TcpCmdClient):
 
         self._svr_host = host
         if self._svr_host is None:
-            self._svr_host = DEF_SVR_HOST
+            self._svr_host = self.DEF_SVR_HOST
 
         self._svr_port = port
         if self._svr_port is None:
-            self._svr_port = IrSendServer.DEF_PORT
+            self._svr_port = self.DEF_SVR_PORT
 
     def send_recv(self, arg_str):
         self._logger.debug
@@ -56,14 +54,15 @@ class App:
         self._logger = get_logger(__class__.__name__, self._debug)
         self._logger.debug('arg=%s, host=%s, port=%d', arg, host, port)
 
-        self._arg = arg
+        self._arg_str = ' '.join(list(arg))
+        self._logger.debug('_arg_str=%a', self._arg_str)
 
         self._cl = IrSendClient(host, port, debug=self._debug)
 
     def main(self):
         self._logger.debug('')
 
-        ret = self._cl.send_recv(self._arg)
+        ret = self._cl.send_recv(self._arg_str)
         self._logger.debug('ret=%s', ret)
 
         if type(ret) != dict:
@@ -120,9 +119,11 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.command(context_settings=CONTEXT_SETTINGS,
                help='IrSendClient')
 @click.argument('arg', type=str, nargs=-1)
-@click.option('--svrhost', '-s', 'svrhost', type=str, default=DEF_SVR_HOST,
+@click.option('--svrhost', '-s', 'svrhost', type=str,
+              default=IrSendClient.DEF_SVR_HOST,
               help='server hostname')
-@click.option('--port', '-p', 'port', type=int, default=IrSendServer.DEF_PORT,
+@click.option('--port', '-p', 'port', type=int,
+              default=IrSendClient.DEF_SVR_PORT,
               help='server port nubmer')
 @click.option('--debug', '-d', 'debug', is_flag=True, default=False,
               help='debug flag')
@@ -130,10 +131,7 @@ def main(arg, svrhost, port, debug):
     logger = get_logger(__name__, debug)
     logger.debug('arg=%s, svrhost=%s, port=%d', arg, svrhost, port)
 
-    arg_str = ' '.join(list(arg))
-    logger.debug('arg_str=%a', arg_str)
-
-    app = App(arg_str, svrhost, port, debug=debug)
+    app = App(arg, svrhost, port, debug=debug)
     try:
         app.main()
     finally:

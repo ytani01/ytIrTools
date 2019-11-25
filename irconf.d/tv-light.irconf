@@ -17,6 +17,13 @@
     "[suffix]": "/*/"
   },
   "buttons": {
-    "power": "[prefix] 02FD [suffix] [prefix] 22DD [suffix]"
+    "power": "[prefix] 02FD [suffix]",
+    "up": "[prefix] 3AC5 [suffix]",
+    "down": "[prefix] BA45 [suffix]",
+    "white": "[prefix] 22DD [suffix]",
+    "red": "[prefix] 9A65 [suffix]",
+    "blue": "[prefix] A25D [suffix]",
+    "green": "[prefix] 1AE5 [suffix]",
+    "null": "[prefix]  [suffix]"
   }
 }

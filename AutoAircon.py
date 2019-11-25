@@ -190,6 +190,7 @@ class AutoAircon(threading.Thread):
             'temp': self.cmd_temp,
             'rtemp': self.cmd_remocon_temp,
             'ttemp': self.cmd_target_temp,
+            'active': self.cmd_active,
             'on':   self.cmd_on,
             'off':  self.cmd_off,
             'kp': self.cmd_kp,
