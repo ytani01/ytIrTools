@@ -163,6 +163,10 @@ class IrSend:
             if self.irconf.data is None:
                 self.logger.error('no config data')
 
+    def reload_conf(self):
+        self.logger.debug('')
+        self.irconf.reload_all()
+
     def clean_wave(self):
         self.logger.debug('')
         self.clear_wave_hash()

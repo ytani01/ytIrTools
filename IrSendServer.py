@@ -104,6 +104,7 @@ class IrSendHandler(socketserver.StreamRequestHandler):
 
             if p1 == self._svr.CMD['LIST']:
                 ret = self.cmd_devlist()
+
             elif p1 == self._svr.CMD['SLEEP']:
                 try:
                     sec = float(p2)
@@ -114,11 +115,18 @@ class IrSendHandler(socketserver.StreamRequestHandler):
                 else:
                     self._svr._cmdq.put([p1, p2])
                     ret = {'rc': 'OK'}
-            elif p2 == self._svr.CMD['LIST'] or p2 == '':
-                ret = self.cmd_buttonlist(p1)
-            else:
+
+            elif p1 == self._svr.CMD['LOAD']:
                 self._svr._cmdq.put([p1, p2])
                 ret = {'rc': 'OK'}
+
+            elif p2 == self._svr.CMD['LIST'] or p2 == '':
+                ret = self.cmd_buttonlist(p1)
+
+            else:  # [dev, button]
+                self._svr._cmdq.put([p1, p2])
+                ret = {'rc': 'OK'}
+
             self.net_write(json.dumps(ret) + '\r\n')
 
         self._logger.debug('done')
@@ -156,6 +164,7 @@ class IrSendServer(socketserver.ThreadingTCPServer):
 
     CMD = {'LIST': '@list',
            'SLEEP': '@sleep',
+           'LOAD': '@load',
            'END': '@end'}
 
     def __init__(self, cmdq, irsend, port, debug=False):
@@ -270,6 +279,11 @@ class App:
                 msg = 'cmd:SLEEP %ssec' % sleep_sec
                 self._logger.info(msg)
                 time.sleep(sleep_sec)
+                continue
+
+            if cmdline[0] == self._svr.CMD['LOAD']:
+                self._svr._irsend.reload_conf()
+                self._logger.debug('%s', self._svr._irsend.irconf.data)
                 continue
 
             # send IR signal

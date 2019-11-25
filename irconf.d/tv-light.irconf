@@ -21,9 +21,12 @@
     "up": "[prefix] 3AC5 [suffix]",
     "down": "[prefix] BA45 [suffix]",
     "white": "[prefix] 22DD [suffix]",
-    "red": "[prefix] 9A65 [suffix]",
+    "red": "[prefix] 1AE5 [suffix]",
+    "green": "[prefix] 9A65 [suffix]",
     "blue": "[prefix] A25D [suffix]",
-    "green": "[prefix] 1AE5 [suffix]",
+    "auto": "[prefix] F00F [suffix]",
+    "fade3": "[prefix] 609F [suffix]",
+    "fade7": "[prefix] E01F [suffix]",
     "null": "[prefix]  [suffix]"
   }
 }

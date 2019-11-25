@@ -306,13 +306,18 @@ class IrConfig:
         self.logger.debug('%s: not found', dev_name)
         return None
 
+    def reload_all(self):
+        self.logger.debug('')
+        self.data = []
+        self.load_all()
+
     def load_all(self):
         """
         全てのirconfファイルを読み込む
 
         Returns
         -------
-        result: bool
+        self.data: dict
 
         """
         self.logger.debug('')
