@@ -36,7 +36,7 @@
     "down":      "[prefix] 827D [suffix]",
 
     "vol_up":    "[prefix] 40BF [suffix]",
-    "vol_up_rep": "[prefix] 40BF [suffix][suffix][suffix][suffix]",
+    "vol_up_rep": "[prefix] 40BF [suffix][suffix][suffix]",
     "vol_down":  "[prefix] C03F [suffix]",
     "vol_down_rep": "[prefix] C03F [suffix][suffix][suffix][suffix][suffix]",
     "vol_down2": "[prefix] CE31 [suffix]",

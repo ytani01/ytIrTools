@@ -222,7 +222,7 @@ class AutoAircon(threading.Thread):
 
         while self._loop:
             ts, temp = self._temp.get_temp()
-            self._logger.debug('ts=%s, temp=%s', ts, temp)
+            self._logger.info('ts=%s, temp=%s', ts, temp)
             if ts == 0:
                 self._logger.debug('ts=%d', ts)
                 break

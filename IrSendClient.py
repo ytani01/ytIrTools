@@ -26,14 +26,16 @@ class IrSendClient(TcpCmdClient):
 
         self._svr_host = host
         self._svr_port = port
+        super().__init__(self._svr_host, self._svr_port, timeout=0.5,
+                         debug=self._debug)
 
-    def send_recv(self, arg_str, timeout=0.5):
+    def send_recv(self, arg_str):
         self._logger.debug
 
         if arg_str == '':
             arg_str = '@list'
 
-        rep_str = super().send_recv(arg_str, timeout=timeout)
+        rep_str = super().send_recv(arg_str)
 
         try:
             rep_json = json.loads(rep_str)
