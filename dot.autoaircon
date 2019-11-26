@@ -8,9 +8,9 @@ topic = env1/temp
 
 [auto_aircon]
 topic = aircon1/param
-kp = 2.5
+kp = 2.7
 ki = 0.02
-kd = 100
+kd = 200
 ki_i_max = 5.0
 
 [server]

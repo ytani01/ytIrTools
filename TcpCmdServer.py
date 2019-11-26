@@ -3,14 +3,13 @@
 # (c) 2019 Yoichi Tanibayashi
 #
 """
-IrSendServer.py
+TcpCmdServer
 
 """
 __author__ = 'Yoichi Tanibayashi'
 __date__   = '2019'
 
 
-from IrSend import IrSend
 import socketserver
 import socket
 import threading
@@ -21,7 +20,7 @@ import time
 from MyLogger import get_logger
 
 
-class IrSendHandler(socketserver.StreamRequestHandler):
+class CmdHandler(socketserver.StreamRequestHandler):
     DEF_HANDLE_TIMEOUT = 5  # sec
 
     def __init__(self, req, c_addr, svr):
@@ -37,9 +36,16 @@ class IrSendHandler(socketserver.StreamRequestHandler):
         return super().__init__(req, c_addr, svr)
 
     def setup(self):
+        self._logger.debug('')
         self._active = True
         self._logger.debug('_active=%s', self._active)
         return super().setup()
+
+    def finish(self):
+        self._logger.debug('')
+        self._active = False
+        self._logger.debug('_active=%s', self._active)
+        return super().finish()
 
     def net_write(self, msg, enc='utf-8'):
         self._logger.debug('msg=%a, enc=%s', msg, enc)
@@ -61,9 +67,10 @@ class IrSendHandler(socketserver.StreamRequestHandler):
                 # in_data = self.rfile.readline().strip()
                 # ↓
                 # rfile の場合、一度タイムアウトすると、
-                # 二度と読めない。
+                # 二度と読めない!?
                 # ↓
                 in_data = self.request.recv(512).strip()
+
             except socket.timeout as e:
                 self._logger.debug('%s:%s.', type(e), e)
 
@@ -92,18 +99,13 @@ class IrSendHandler(socketserver.StreamRequestHandler):
                 self._logger.debug('decoded_data=%a', decoded_data)
 
             # get cmdline
-            cmdline = decoded_data.split()
-            self._logger.debug('cmdline=%s', cmdline)
-            if len(cmdline) == 0:
+            args = decoded_data.split()
+            self._logger.debug('args=%s', args)
+            if len(args) == 0:
+                self._logger.warning('no command')
                 break
-            if len(cmdline) == 1:
-                cmdline.append('')
-                self._logger.debug('cmdline=%s', cmdline)
 
-            p1, p2 = cmdline[:2]
-            self._logger.info('pi1,p2=%a,%a', p1, p2)
-
-            if p1 == self._svr.CMD['LIST']:
+            if args[0] == self._svr.CMD['LIST']:
                 ret = self.cmd_devlist()
 
             elif p1 == self._svr.CMD['SLEEP']:
@@ -132,12 +134,6 @@ class IrSendHandler(socketserver.StreamRequestHandler):
 
         self._logger.debug('done')
 
-    def finish(self):
-        self._logger.debug('')
-        self._active = False
-        self._logger.debug('_active=%s', self._active)
-        return super().finish()
-
     def cmd_devlist(self):
         self._logger.debug('')
 
@@ -160,10 +156,10 @@ class IrSendHandler(socketserver.StreamRequestHandler):
         self._logger.debug('')
 
 
-class IrSendServer(socketserver.ThreadingTCPServer):
+class CmdServer(socketserver.ThreadingTCPServer):
     DEF_PORT = 12352
 
-    CMD = {'LIST': '@list',
+    CMD = {'ECHO': '@echo',
            'SLEEP': '@sleep',
            'LOAD': '@load',
            'END': '@end'}
@@ -231,26 +227,17 @@ class IrSendServer(socketserver.ThreadingTCPServer):
 
 class App:
     """
-    cmdline :=
-      [dev_name, button_name] ... 赤外線信号送信
-      [CMD['SLEEP'], sec]     ... スリープ
-      [CMD['LIST'], '']       ... デバイス名リスト
-      [dev_name, CMD['LIST']] ... ボタン名リスト
-      [CMD['END'], '']        ... 終了(無視)
     """
-    def __init__(self, port, pin, debug=False):
+    def __init__(self, port, debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
-        self._logger.debug('port=%s, pin=%s', port, pin)
+        self._logger.debug('port=%s', port)
 
-        self._port = port or IrSendServer.DEF_PORT
-        self._pin = pin or IrSend.DEF_PIN
-        self._logger.debug('port=%d, pin=%d', self._port, self._pin)
+        self._port = port or CmdServer.DEF_PORT
 
         self._cmdq = queue.Queue()
 
-        self._irsend = IrSend(self._pin, load_conf=True, debug=self._debug)
-        self._svr = IrSendServer(self._cmdq, self._irsend, self._port,
+        self._svr = CmdServer(self._cmdq, self._irsend, self._port,
                                  self._debug)
         self._svr_th = threading.Thread(target=self._svr.serve_forever,
                                         daemon=True)
@@ -264,26 +251,6 @@ class App:
             cmdline = self._cmdq.get()
             self._logger.debug('cmdline=%s', cmdline)
 
-            if cmdline[0] == self._svr.CMD['END']:
-                msg = 'cmd:END .. ignored'
-                self._logger.info(msg)
-                continue
-
-            if cmdline[0] == self._svr.CMD['SLEEP']:
-                sleep_sec = float(cmdline[1])
-                msg = 'cmd:SLEEP %ssec' % sleep_sec
-                self._logger.info(msg)
-                time.sleep(sleep_sec)
-                continue
-
-            if cmdline[0] == self._svr.CMD['LOAD']:
-                self._svr._irsend.reload_conf()
-                self._logger.debug('%s', self._svr._irsend.irconf.data)
-                continue
-
-            # send IR signal
-            dev_name, button_name = cmdline
-            msg = 'send IR: %s %s' % (dev_name, button_name)
             self._logger.info(msg)
             self._irsend.send(dev_name, button_name)
             time.sleep(0.1)

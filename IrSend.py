@@ -23,7 +23,7 @@ class WaveForm:
     ONOFF_STR = ['OFF', 'ON']
 
     def __init__(self, pin, debug=False):
-        self.debug = debug
+        self._debug = debug
         self.logger = get_logger(__class__.__name__, debug)
         self.logger.debug('pin=%d', pin)
 
@@ -104,7 +104,7 @@ class Wave(WaveForm):
     PIN_PWM = [12, 13, 18]
 
     def __init__(self, pi, pin, debug=False):
-        self.debug = debug
+        self._debug = debug
         self.logger = get_logger(__class__.__name__, debug)
         self.logger.debug('pin: %d', pin)
 
@@ -115,7 +115,7 @@ class Wave(WaveForm):
             msg = 'pin:%d is one of PWM pins:%s' % (pin, self.PIN_PWM)
             raise ValueError(msg)
 
-        super().__init__(self.pin, debug=self.debug)
+        super().__init__(self.pin, debug=self._debug)
         self.wave = None
 
         # self.pi.wave_add_new()
@@ -128,7 +128,7 @@ class Wave(WaveForm):
         return self.wave
 
     def delete(self):
-        self.debug('')
+        self._logger.debug('')
 
         if self.wave is not None:
             self.pi.wave_delete(self.wave)
@@ -143,7 +143,7 @@ class IrSend:
     SIG_BITS_MIN = 5
 
     def __init__(self, pin, load_conf=False, debug=False):
-        self.debug = debug
+        self._debug = debug
         self.logger = get_logger(__class__.__name__, debug)
         self.logger.debug('pin: %d', pin)
 
@@ -158,7 +158,7 @@ class IrSend:
 
         self.irconf = None
         if load_conf:
-            self.irconf = IrConfig(load_all=True, debug=self.debug)
+            self.irconf = IrConfig(load_all=True, debug=self._debug)
             self.logger.debug('data=%s', self.irconf.data)
             if self.irconf.data is None:
                 self.logger.error('no config data')
@@ -191,7 +191,7 @@ class IrSend:
 
     def create_pulse_wave1(self, usec, freq=DEF_FREQ, duty=DEF_DUTY):
         self.logger.debug('usec: %d, freq=%d', usec, freq)
-        wave = Wave(self.pi, self.pin, debug=self.debug)
+        wave = Wave(self.pi, self.pin, debug=self._debug)
         wave.append_carrier(freq, duty, usec)
         return wave.create_wave()
 
@@ -222,7 +222,7 @@ class IrSend:
 
     def create_space_wave1(self, usec):
         self.logger.debug('usec: %d', usec)
-        wave = Wave(self.pi, self.pin, debug=self.debug)
+        wave = Wave(self.pi, self.pin, debug=self._debug)
         wave.append_null(int(round(usec)))
         return wave.create_wave()
 
@@ -282,7 +282,7 @@ class IrSend:
         self.logger.debug('dev_name=%s, button_name=%s', dev_name, button_name)
 
         if self.irconf is None:
-            self.irconf = IrConfig(load_all=True, debug=self.debug)
+            self.irconf = IrConfig(load_all=True, debug=self._debug)
             if self.irconf.data is None:
                 self.logger.error('loading config files: failed')
                 return False
@@ -334,8 +334,8 @@ class App:
     MSG_END         = '__end__'
 
     def __init__(self, args, n, interval, pin, debug=False):
-        self.debug = debug
-        self.logger = get_logger(__class__.__name__, self.debug)
+        self._debug = debug
+        self.logger = get_logger(__class__.__name__, self._debug)
         self.logger.debug('args=%s, n=%d, interval=%d, pin=%d',
                           args, n, interval, pin)
 
@@ -349,7 +349,7 @@ class App:
         self.interval = interval
         self.pin      = pin
 
-        self.irsend = IrSend(self.pin, load_conf=True, debug=self.debug)
+        self.irsend = IrSend(self.pin, load_conf=True, debug=self._debug)
 
         self.msgq = queue.Queue()
         self.th_worker = threading.Thread(target=self.worker)

@@ -70,19 +70,15 @@ class IrConfig:
                     str(Path.home()) + '/.irconf.d',
                     '/etc/irconf.d']
 
-    def __init__(self, conf_dir=None, load_all=False, debug=False):
-        self.debug = debug
-        self.logger = get_logger(__class__.__name__, self.debug)
-        self.logger.debug('conf_dir=%s', conf_dir)
+    def __init__(self, conf_dir=DEF_CONF_DIR, load_all=False, debug=False):
+        self._debug = debug
+        self._logger = get_logger(__class__.__name__, self._debug)
+        self._logger.debug('conf_dir=%s', conf_dir)
 
-        if conf_dir is None:
-            self.conf_dir = self.DEF_CONF_DIR
-        else:
-            if type(conf_dir) == list:
-                self.conf_dir = conf_dir
-            else:
-                self.conf_dir = [conf_dir]
-        self.logger.debug('conf_dir=%s', self.conf_dir)
+        self.conf_dir = conf_dir
+        if type(self.conf_dir) != list:
+            self.conf_dir = [self.conf_dir]
+        self._logger.debug('conf_dir=%s', self.conf_dir)
 
         self.data = []
 
@@ -106,16 +102,16 @@ class IrConfig:
         '': error
 
         """
-        self.logger.debug('macro_data=%s', json.dumps(macro_data, indent=2))
-        self.logger.debug('button_str=%s', button_str)
+        self._logger.debug('macro_data=%s', json.dumps(macro_data, indent=2))
+        self._logger.debug('button_str=%s', button_str)
 
         for m in macro_data:
-            self.logger.debug('m=%s', m)
+            self._logger.debug('m=%s', m)
             button_str = button_str.replace(m, macro_data[m])
-            self.logger.debug('button_str=%s', button_str)
+            self._logger.debug('button_str=%s', button_str)
 
         if '[' in button_str or ']' in button_str:
-            self.logger.error('invalid macro: button_str=%s', button_str)
+            self._logger.error('invalid macro: button_str=%s', button_str)
             return ''
 
         return button_str
@@ -137,46 +133,46 @@ class IrConfig:
         '': error
 
         """
-        self.logger.debug('dev_data=%s, button_name=%s',
-                          dev_data, button_name)
+        self._logger.debug('dev_data=%s, button_name=%s',
+                           dev_data, button_name)
 
         try:
             button_data = dev_data['buttons'][button_name]
         except KeyError:
-            self.logger.error('\'%s\': no such button', button_name)
+            self._logger.error('\'%s\': no such button', button_name)
             return ''
 
         if type(button_data) == str:
             button_str = button_data
             try:
                 button_rep = dev_data['def_repeat']
-                self.logger.debug('button_rep=dev_data[\'def_repeat\']=%d',
-                                  button_rep)
+                self._logger.debug('button_rep=dev_data[\'def_repeat\']=%d',
+                                   button_rep)
             except KeyError:
                 button_rep = 1
         elif type(button_data) == list and len(button_data) == 2:
             (button_str, button_rep) = button_data
         else:
-            self.logger.error('invalid button_data: %s', button_data)
+            self._logger.error('invalid button_data: %s', button_data)
             return ''
-        self.logger.debug('button_str=%s', button_str)
-        self.logger.debug('button_rep=%d', button_rep)
+        self._logger.debug('button_str=%s', button_str)
+        self._logger.debug('button_rep=%d', button_rep)
 
         # マクロ展開
         try:
             button_str = self.expand_button_macro(dev_data['macro'],
                                                   button_str)
-            self.logger.debug('button_str=%s', button_str)
+            self._logger.debug('button_str=%s', button_str)
         except KeyError:
-            self.logger.warning('no macro')
+            self._logger.warning('no macro')
 
         # 繰り返し回数展開
         button_str = button_str * button_rep
-        self.logger.debug('button_str=%s', button_str)
+        self._logger.debug('button_str=%s', button_str)
 
         # スペース削除
         button_str = button_str.replace(' ', '')
-        self.logger.debug('button_str=%s', button_str)
+        self._logger.debug('button_str=%s', button_str)
 
         # '(0b)01(0b)10' -> '(0b)0110'
         for bit in '01':
@@ -188,7 +184,7 @@ class IrConfig:
                 continue
             button_str = button_str.replace(ch, ' ' + ch + ' ')
         s_list1 = button_str.split()
-        self.logger.debug('button_str=%s', button_str)
+        self._logger.debug('button_str=%s', button_str)
 
         # hex -> bin, '(0b)0101' -> '0101'
         s_list2 = []
@@ -212,7 +208,7 @@ class IrConfig:
         # 一つの文字列に再結合
         #
         syms = ''.join(s_list2)
-        self.logger.debug('syms=%s', syms)
+        self._logger.debug('syms=%s', syms)
 
         return syms
 
@@ -234,23 +230,24 @@ class IrConfig:
         []: error
 
         """
-        self.logger.debug('dev_name=%s, button_name=%s', dev_name, button_name)
+        self._logger.debug('dev_name=%s, button_name=%s',
+                           dev_name, button_name)
 
         #
         # デバイス情報取得
         #
         dev = self.get_dev(dev_name)
         if dev is None:
-            self.logger.error('\'%s\': no such device', dev_name)
+            self._logger.error('\'%s\': no such device', dev_name)
             return []
         dev_data = dev['data']
-        self.logger.debug('dev_data=%s', dev_data)
+        self._logger.debug('dev_data=%s', dev_data)
 
         #
         # ボタンデータをシンボル文字列に変換
         #
         syms = self.button2syms(dev_data, button_name)
-        self.logger.debug('syms=%s', syms)
+        self._logger.debug('syms=%s', syms)
         if syms == '':
             return []
 
@@ -262,11 +259,11 @@ class IrConfig:
         t = dev_data['T']
         for ch in syms:
             if ch not in dev_data['sym_tbl']:
-                self.logger.warning('ch=%s !? .. ignored', ch)
+                self._logger.warning('ch=%s !? .. ignored', ch)
                 continue
             (pulse, space) = dev_data['sym_tbl'][ch][0]
             raw_data.append([pulse * t, space * t])
-        self.logger.debug('raw_data=%s', raw_data)
+        self._logger.debug('raw_data=%s', raw_data)
 
         return raw_data
 
@@ -283,31 +280,31 @@ class IrConfig:
         d_ent: {'file': conf_file_name, 'data': conf_data}
 
         """
-        self.logger.debug('dev_name=%s', dev_name)
+        self._logger.debug('dev_name=%s', dev_name)
 
         for d_ent in self.data:
             try:
                 d_nlist = d_ent['data']['dev_name']
-                self.logger.debug('d_nlist=%s', d_nlist)
+                self._logger.debug('d_nlist=%s', d_nlist)
             except KeyError:
-                self.logger.warning('KeyError .. ignored: %s', d_ent)
+                self._logger.warning('KeyError .. ignored: %s', d_ent)
                 continue
 
             if type(d_nlist) != list:
                 d_nlist = [d_nlist]
-                self.logger.debug('d_nlist=%s', d_nlist)
+                self._logger.debug('d_nlist=%s', d_nlist)
             for d_name in d_nlist:
-                self.logger.debug('d_name=%s', d_name)
+                self._logger.debug('d_name=%s', d_name)
 
                 if d_name == dev_name:
-                    self.logger.debug('%s: found', dev_name)
+                    self._logger.debug('%s: found', dev_name)
                     return d_ent
 
-        self.logger.debug('%s: not found', dev_name)
+        self._logger.debug('%s: not found', dev_name)
         return None
 
     def reload_all(self):
-        self.logger.debug('')
+        self._logger.debug('')
         self.data = []
         self.load_all()
 
@@ -320,18 +317,18 @@ class IrConfig:
         self.data: dict
 
         """
-        self.logger.debug('')
+        self._logger.debug('')
 
         files = []
         for d in self.conf_dir:
-            self.logger.debug('d=%s', d)
+            self._logger.debug('d=%s', d)
             for f in list(Path(d).glob('*' + self.CONF_SUFFIX)):
                 files.append(str(f))
-        self.logger.debug('files=%s', files)
+        self._logger.debug('files=%s', files)
 
         for f in files:
             if self.load(f) is None:
-                self.logger.error('%s: loading failed', f)
+                self._logger.error('%s: loading failed', f)
 
         return self.data
 
@@ -347,26 +344,26 @@ class IrConfig:
         file_name: str
 
         """
-        self.logger.debug('file_name=%s', file_name)
+        self._logger.debug('file_name=%s', file_name)
 
         with open(file_name, 'r') as f:
             line = f.readlines()
 
         if line[0].split()[0] != '{' or line[-1].split()[0] != ',':
-            self.logger.debug('invalid json.dump file: %s', file_name)
+            self._logger.debug('invalid json.dump file: %s', file_name)
             return None
 
         line.pop(-1)
         line.insert(0, '[')
         line.append(']')
         s = ''.join(line)
-        self.logger.debug(s)
+        self._logger.debug(s)
         try:
             data = json.loads(s)
         except Exception as e:
-            self.logger.debug('%s:%s.', type(e), e)
+            self._logger.debug('%s:%s.', type(e), e)
             return None
-        self.logger.debug('data=%s', data)
+        self._logger.debug('data=%s', data)
         return data
 
     def load(self, file_name):
@@ -378,19 +375,19 @@ class IrConfig:
         self.data: dict
 
         """
-        self.logger.debug('file_name=%s', file_name)
+        self._logger.debug('file_name=%s', file_name)
 
         try:
             with open(file_name, 'r') as f:
                 data = json.load(f)
-                self.logger.debug('data=%s', json.dumps(data))
+                self._logger.debug('data=%s', json.dumps(data))
         except json.JSONDecodeError as e:
             data = self.load_json_dump(file_name)
             if data is None:
-                self.logger.error('%s: %s, %s', file_name, type(e), e)
+                self._logger.error('%s: %s, %s', file_name, type(e), e)
                 return None
         except Exception as e:
-            self.logger.error('%s, %s', type(e), e)
+            self._logger.error('%s, %s', type(e), e)
             return None
 
         if type(data) == list:
@@ -400,12 +397,12 @@ class IrConfig:
         else:
             data_ent = {'file': file_name, 'data': data}
             self.data.append(data_ent)
-        self.logger.debug('data=%s', self.data)
+        self._logger.debug('data=%s', self.data)
 
         return self.data
 
     def save(self, file_name=None):
-        self.logger.debug('file_name=%s', file_name)
+        self._logger.debug('file_name=%s', file_name)
         # TBD
 
 
@@ -414,34 +411,34 @@ class App:
     """
     """
     def __init__(self, debug=False):
-        self.debug = debug
-        self.logger = get_logger(__class__.__name__, debug)
-        self.logger.debug('')
+        self._debug = debug
+        self._logger = get_logger(__class__.__name__, debug)
+        self._logger.debug('')
 
     def main(self, dev_name, button, conf_file):
-        self.logger.debug('dev_name=%s, button=%s, conf_file=%s',
-                          dev_name, button, conf_file)
+        self._logger.debug('dev_name=%s, button=%s, conf_file=%s',
+                           dev_name, button, conf_file)
 
-        irconf = IrConfig(debug=self.debug)
-        self.logger.debug('irconf=%s', irconf)
+        irconf = IrConfig(debug=self._debug)
+        self._logger.debug('irconf=%s', irconf)
 
         if len(conf_file) == 0:
             if irconf.load_all() is None:
-                self.logger.error('loading failed')
+                self._logger.error('loading failed')
                 return
         else:
             if irconf.load(conf_file) is None:
-                self.logger.error('\'%s\': loading faild', conf_file)
+                self._logger.error('\'%s\': loading faild', conf_file)
                 return
 
         conf_data_ent = irconf.get_dev(dev_name)
-        self.logger.debug('conf_data_ent=%s', conf_data_ent)
+        self._logger.debug('conf_data_ent=%s', conf_data_ent)
 
         if conf_data_ent is not None:
             print('<%s>' % (dev_name))
 
             conf_data = conf_data_ent['data']
-            self.logger.debug('conf_data=%s', conf_data)
+            self._logger.debug('conf_data=%s', conf_data)
 
             if len(button) != 0:
                 if ''.join(conf_data['macro'].values()) != '':
@@ -460,10 +457,10 @@ class App:
                     print('  <%s>: %s' % (b, button_data))
 
                     raw_data = irconf.get_pulse_space(dev_name, b)
-                    self.logger.debug('raw_data=%s', raw_data)
+                    self._logger.debug('raw_data=%s', raw_data)
 
     def end(self):
-        self.logger.debug('')
+        self._logger.debug('')
 
 
 #
