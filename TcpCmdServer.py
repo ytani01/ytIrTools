@@ -3,23 +3,28 @@
 # (c) 2019 Yoichi Tanibayashi
 #
 """
-TcpCmdServer
+TcpCmdServer -- サーバープログラムのテンプレート
 
 要求(コマンド文字列)を受け取り、
 対応するコマンド(関数)をサーバー側で実行する。
 
-要求は、内部でキューイングされて、順番に実行される。
-クライアントには、キューイングと同時に受理した旨返信し、
-通信を終了する。
+コマンドには、CmdServerHandler で即座に実行されるものと、
+キューイングされて、CmdServerApp で順に実行されるものがある。
 
-クライアントは、コメントが受理されたことがわかり、
-コマンド実行の成否はわからない。
 
+main()
+  |
+  +- CmdServerApp
+       |
+       +- CmdServer
+            |
+            +- CmdServerHandler
 """
 __author__ = 'Yoichi Tanibayashi'
 __date__   = '2019'
 
 
+from IrSendClient import IrSendClient
 import socketserver
 import socket
 import threading
@@ -34,6 +39,7 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
     DEF_HANDLE_TIMEOUT = 3  # sec
 
     RC_ACCEPT = 'ACCEPT'
+    RC_OK = 'OK'
     RC_NG = 'NG'
 
     def __init__(self, req, c_addr, svr):
@@ -43,6 +49,13 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
 
         self._svr = svr
 
+        self._cmd = {
+            'ir1': {'func': self.cmd_irsend, 'help': 'send IR signal'},
+            'help': {'func': self.cmd_help, 'help': 'help command'}
+        }
+
+        self._active = False
+
         # 変数名は固定: self.request.recv() のタイムアウト
         self.timeout = self.DEF_HANDLE_TIMEOUT
         self._logger.debug('timeout=%s sec', self.timeout)
@@ -50,13 +63,13 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
         return super().__init__(req, c_addr, svr)
 
     def setup(self):
-        self._logger.debug('timeout=%s', self.timeout)
+        self._logger.debug('_active=%s', self._active)
         self._active = True
         self._logger.debug('_active=%s', self._active)
         return super().setup()
 
     def finish(self):
-        self._logger.debug('')
+        self._logger.debug('_active=%s', self._active)
         self._active = False
         self._logger.debug('_active=%s', self._active)
         return super().finish()
@@ -71,6 +84,7 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
         if enc != '':
             msg = msg.encode(enc)
             self._logger.debug('msg=%a', msg)
+
         try:
             self.wfile.write(msg)
         except Exception as e:
@@ -94,10 +108,10 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
             self._logger.debug('wait net_data')
             try:
                 # in_data = self.rfile.readline().strip()
-                # ↓
-                # rfile の場合、一度タイムアウトすると、
+                #                ↓
+                # rfile だと、一度タイムアウトすると、
                 # 二度と読めない!?
-                # ↓
+                #              ↓
                 in_data = self.request.recv(512).strip()
 
             except socket.timeout as e:
@@ -126,7 +140,7 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
                 decoded_data = in_data.decode('utf-8')
             except UnicodeDecodeError as e:
                 msg = '%s:%s .. ignored' % (type(e), e)
-                self._logging.error(msg)
+                self._logger.error(msg)
                 self.send_reply(self.RC_NG, msg)
                 break
             else:
@@ -141,37 +155,78 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
                 self.send_reply(self.RC_NG, msg)
                 break
 
-            self._logger.info('qsize=%d', self._svr._cmdq.qsize())
+            if args[0] in self._cmd:
+                #
+                # interactive command
+                #
+                self._logger.info('exec %a', args[0])
+                rc, msg = self._cmd[args[0]]['func'](args)
+                self._logger.info('rc=%s, msg=%s', rc, msg)
+                self.send_reply(rc, msg)
+                continue
+
+            #
+            # queued command
+            #
+            if args[0] not in self._svr._app._cmd:
+                msg = '%s: no such command .. ignored' % args[0]
+                self._logger.error(msg)
+                self.send_reply(self.RC_NG, msg)
+                continue
+
+            qsize = self._svr._app._cmdq.qsize()
+            if qsize > 100:
+                msg = 'qsize=%d: server busy' % qsize
+                self._logger.warning(msg)
+                self.send_reply(self.RC_NG, msg)
+
             try:
-                self._svr._cmdq.put(args, block=False)
+                self._svr._app._cmdq.put(args, block=False)
             except Exception as e:
                 msg = '%s:%s' % (type(e), e)
                 self._logger.error(msg)
+                self.send_reply(self.RC_NG, msg)
+                break
             else:
                 self.send_reply(self.RC_ACCEPT)
 
         self._logger.debug('done')
 
-    def cmd_devlist(self):
-        self._logger.debug('')
+    def cmd_help(self, args):
+        self._logger.debug('args=%s', args)
 
-        devlist = self._svr._irsend.get_dev_list()
-        ret = {'rc': 'OK', 'data': devlist}
-        return ret
+        msg = []
+        for c in self._cmd:
+            msg.append([c, self._cmd[c]['help']])
+        for c in self._svr._app._cmd:
+            msg.append([c, self._svr._app._cmd[c]['help']])
 
-    def cmd_help(self):
-        self._logger.debug('')
+        rc = self.RC_OK
+        return rc, msg
+
+    def cmd_irsend(self, args):
+        self._logger.debug('args=%s', args)
+
+        irsend_cl = IrSendClient(debug=self._debug)
+        ret = irsend_cl.send_recv(' '.join(args[1:]))
+        self._logger.info('ret=%s', ret)
+
+        rc = ret['rc']
+        msg = None
+        if 'data' in ret:
+            msg = ret['data']
+        return rc, msg
 
 
 class CmdServer(socketserver.ThreadingTCPServer):
     DEF_PORT = 12399
 
-    def __init__(self, cmdq, port=DEF_PORT, debug=False):
+    def __init__(self, app, port=DEF_PORT, debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
         self._logger.debug('port=%s', port)
 
-        self._cmdq = cmdq
+        self._app = app
         self._port = port or self.DEF_PORT
 
         self._active = False
@@ -216,21 +271,22 @@ class CmdServer(socketserver.ThreadingTCPServer):
 class CmdServerApp:
     """
     """
-    CMD = {'ECHO': '@echo',
-           'SLEEP': '@sleep',
-           'LOAD': '@load',
-           'END': '@end'}
+    RC_OK = 'OK'
+    RC_NG = 'NG'
 
     def __init__(self, port, debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
         self._logger.debug('port=%s', port)
 
-        self._port = port
+        self._cmd = {
+            'ir2': {'func': self.cmd_irsend, 'help': 'send IR signal'},
+            'sleep': {'func': self.cmd_sleep, 'help': 'sleep sec'}
+        }
 
         self._cmdq = queue.Queue()
 
-        self._svr = CmdServer(self._cmdq, self._port, self._debug)
+        self._svr = CmdServer(self, port, self._debug)
         self._svr_th = threading.Thread(target=self._svr.serve_forever,
                                         daemon=True)
 
@@ -240,10 +296,19 @@ class CmdServerApp:
         self._svr_th.start()
 
         while True:
-            cmdline = self._cmdq.get()
-            self._logger.info('cmdline=%s', cmdline)
+            args = self._cmdq.get()
+            self._logger.info('args=%s', args)
 
             # exec cmd
+            if args[0] in self._cmd:
+                self._logger.info('exec %a', args[0])
+                rc, msg = self._cmd[args[0]]['func'](args)
+                if rc == self.RC_OK:
+                    self._logger.info('rc=%a, msg=%a', rc, msg)
+                else:
+                    self._logger.error('rc=%a, msg=%a', rc, msg)
+            else:
+                self._logger.error('%s: no such command .. ignored', args[0])
 
             time.sleep(0.1)
 
@@ -251,6 +316,34 @@ class CmdServerApp:
         self._logger.debug('')
         self._svr.end()
         self._logger.debug('done')
+
+    def cmd_irsend(self, args):
+        self._logger.debug('args=%s', args)
+
+        irsend_cl = IrSendClient(debug=self._debug)
+        ret = irsend_cl.send_recv(' '.join(args[1:]))
+        self._logger.info('ret=%s', ret)
+
+        rc = ret['rc']
+        msg = None
+        if 'data' in ret:
+            msg = ret['data']
+        return rc, msg
+
+    def cmd_sleep(self, args):
+        self._logger.debug('args=%s', args)
+
+        msg = None
+        try:
+            sleep_sec = float(args[1])
+        except Exception as e:
+            rc = self.RC_NG
+            msg = '%s: %s' % (type(e), e)
+            return rc, msg
+
+        time.sleep(sleep_sec)
+        rc = self.RC_OK
+        return rc, None
 
 
 #####

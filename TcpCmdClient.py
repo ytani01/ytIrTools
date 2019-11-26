@@ -21,13 +21,15 @@ DEF_PORT = 12351
 
 
 class TcpCmdClient:
-    def __init__(self, host, port, debug=False):
+    def __init__(self, host, port, timeout=2.5, debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
-        self._logger.debug('host=%s, port=%s', host, port)
+        self._logger.debug('host=%s, port=%s, timeout=%.1f',
+                           host, port, timeout)
 
         self._svr_host = host
         self._svr_port = port
+        self._timeout = timeout
 
     def end(self):
         self._logger.debug('')
@@ -36,8 +38,14 @@ class TcpCmdClient:
         self._logger.debug('cmd_text=%a', cmd_text)
 
         with telnetlib.Telnet(self._svr_host, self._svr_port) as tn:
-            out_data = cmd_text.encode('utf-8')
-            self._logger.debug('out_data=%a', out_data)
+            try:
+                out_data = cmd_text.encode('utf-8')
+            except UnicodeDecodeError as e:
+                rep_str = '%s, %s' % (type(e), e)
+                self._logger.error(rep_str)
+                return rep_str
+            else:
+                self._logger.debug('out_data=%a', out_data)
 
             tn.write(out_data)
 
@@ -45,7 +53,8 @@ class TcpCmdClient:
             while True:
                 in_data = b''
                 try:
-                    in_data = tn.read_until(b'__dummy__', timeout=0.5)
+                    in_data = tn.read_until(b'__dummy__',
+                                            timeout=self._timeout)
                     self._logger.debug('in_data=%a', in_data)
                 except Exception as e:
                     self._logger.warning('%s: %s.', type(e), e)
@@ -63,7 +72,7 @@ class TcpCmdClient:
 
 
 class App:
-    def __init__(self, cmd_text, host, port, debug=False):
+    def __init__(self, cmd_text, host, port, timeout, debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
         self._logger.debug('cmd_text=%s, host=%s, port=%d',
@@ -71,7 +80,7 @@ class App:
 
         self._cmd_text = cmd_text
 
-        self._cl = TcpCmdClient(host, port, debug=self._debug)
+        self._cl = TcpCmdClient(host, port, timeout, debug=self._debug)
 
     def main(self):
         self._logger.debug('')
@@ -102,17 +111,19 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
               help='server hostname')
 @click.option('--port', '-p', 'port', type=int, default=DEF_PORT,
               help='server port nubmer')
+@click.option('--timeout', '-t', 'timeout', type=float, default=2.5,
+              help='timeout sec(float)')
 @click.option('--debug', '-d', 'debug', is_flag=True, default=False,
               help='debug flag')
-def main(arg, svrhost, port, debug):
+def main(arg, svrhost, port, timeout, debug):
     logger = get_logger(__name__, debug)
-    logger.debug('arg=%s, svrhost=%s, port=%d',
-                 arg, svrhost, port)
+    logger.debug('arg=%s, svrhost=%s, port=%d, timeout=%.1f',
+                 arg, svrhost, port, timeout)
 
     arg_str = ' '.join(list(arg))
     logger.debug('arg_str=%s', arg_str)
 
-    app = App(arg_str, svrhost, port, debug=debug)
+    app = App(arg_str, svrhost, port, timeout, debug=debug)
     try:
         app.main()
     finally:
