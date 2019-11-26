@@ -5,6 +5,16 @@
 """
 TcpCmdServer
 
+要求(コマンド文字列)を受け取り、
+対応するコマンド(関数)をサーバー側で実行する。
+
+要求は、内部でキューイングされて、順番に実行される。
+クライアントには、キューイングと同時に受理した旨返信し、
+通信を終了する。
+
+クライアントは、コメントが受理されたことがわかり、
+コマンド実行の成否はわからない。
+
 """
 __author__ = 'Yoichi Tanibayashi'
 __date__   = '2019'
@@ -20,8 +30,11 @@ import time
 from MyLogger import get_logger
 
 
-class CmdHandler(socketserver.StreamRequestHandler):
-    DEF_HANDLE_TIMEOUT = 5  # sec
+class CmdServerHandler(socketserver.StreamRequestHandler):
+    DEF_HANDLE_TIMEOUT = 3  # sec
+
+    RC_ACCEPT = 'ACCEPT'
+    RC_NG = 'NG'
 
     def __init__(self, req, c_addr, svr):
         self._debug = svr._debug
@@ -30,13 +43,14 @@ class CmdHandler(socketserver.StreamRequestHandler):
 
         self._svr = svr
 
+        # 変数名は固定: self.request.recv() のタイムアウト
         self.timeout = self.DEF_HANDLE_TIMEOUT
         self._logger.debug('timeout=%s sec', self.timeout)
 
         return super().__init__(req, c_addr, svr)
 
     def setup(self):
-        self._logger.debug('')
+        self._logger.debug('timeout=%s', self.timeout)
         self._active = True
         self._logger.debug('_active=%s', self._active)
         return super().setup()
@@ -46,6 +60,10 @@ class CmdHandler(socketserver.StreamRequestHandler):
         self._active = False
         self._logger.debug('_active=%s', self._active)
         return super().finish()
+
+    def set_timeout(self, timeout=DEF_HANDLE_TIMEOUT):
+        self._debug('timeout=%s', timeout)
+        self.timeout = timeout
 
     def net_write(self, msg, enc='utf-8'):
         self._logger.debug('msg=%a, enc=%s', msg, enc)
@@ -57,6 +75,17 @@ class CmdHandler(socketserver.StreamRequestHandler):
             self.wfile.write(msg)
         except Exception as e:
             self._logger.warning('%s:%s.', type(e), e)
+
+    def send_reply(self, rc, msg=None):
+        self._logger.debug('rc=%a, msg=%a', rc, msg)
+
+        if msg is None:
+            rep = {'rc': rc}
+        else:
+            rep = {'rc': rc, 'msg': msg}
+        rep_str = json.dumps(rep)
+        self._logger.debug('rep_str=%a', rep_str)
+        self.net_write(rep_str + '\r\n')
 
     def handle(self):
         self._logger.debug('')
@@ -72,28 +101,33 @@ class CmdHandler(socketserver.StreamRequestHandler):
                 in_data = self.request.recv(512).strip()
 
             except socket.timeout as e:
-                self._logger.debug('%s:%s.', type(e), e)
-
-                self._logger.debug('_svr._active=%s', self._svr._active)
+                self._logger.warning('%s:%s.', type(e), e)
+                self._logger.warning('_svr._active=%s', self._svr._active)
                 if self._svr._active:
                     # サーバーが生きている場合は、継続
                     continue
                 else:
+                    self.send_reply(self.RC_NG, 'server is inactive.')
                     break
             except Exception as e:
                 self._logger.warning('%s:%s.', type(e), e)
+                msg = 'error %s:%s' % (type(e), e)
+                self.send_reply(self.RC_NG, msg)
                 break
             else:
                 self._logger.debug('in_data=%a', in_data)
 
-            if len(in_data) == 0:
+            if len(in_data) == 0 or in_data == b'\x04':
+                self._logger.debug('disconnected')
                 break
 
             # decode
             try:
                 decoded_data = in_data.decode('utf-8')
             except UnicodeDecodeError as e:
-                self._logging.error('%s:%s .. ignored', type(e), e)
+                msg = '%s:%s .. ignored' % (type(e), e)
+                self._logging.error(msg)
+                self.send_reply(self.RC_NG, msg)
                 break
             else:
                 self._logger.debug('decoded_data=%a', decoded_data)
@@ -102,35 +136,19 @@ class CmdHandler(socketserver.StreamRequestHandler):
             args = decoded_data.split()
             self._logger.debug('args=%s', args)
             if len(args) == 0:
-                self._logger.warning('no command')
+                msg = 'no command'
+                self._logger.warning(msg)
+                self.send_reply(self.RC_NG, msg)
                 break
 
-            if args[0] == self._svr.CMD['LIST']:
-                ret = self.cmd_devlist()
-
-            elif p1 == self._svr.CMD['SLEEP']:
-                try:
-                    sec = float(p2)
-                except ValueError:
-                    msg = '%a: invalid sleep sec .. ignored' % p2
-                    ret = {'rc': 'NG', 'data': msg}
-                    self._logger.warning(msg)
-                else:
-                    self._svr._cmdq.put([p1, p2])
-                    ret = {'rc': 'OK'}
-
-            elif p1 == self._svr.CMD['LOAD']:
-                self._svr._cmdq.put([p1, p2])
-                ret = {'rc': 'OK'}
-
-            elif p2 == self._svr.CMD['LIST'] or p2 == '':
-                ret = self.cmd_buttonlist(p1)
-
-            else:  # [dev, button]
-                self._svr._cmdq.put([p1, p2])
-                ret = {'rc': 'OK'}
-
-            self.net_write(json.dumps(ret) + '\r\n')
+            self._logger.info('qsize=%d', self._svr._cmdq.qsize())
+            try:
+                self._svr._cmdq.put(args, block=False)
+            except Exception as e:
+                msg = '%s:%s' % (type(e), e)
+                self._logger.error(msg)
+            else:
+                self.send_reply(self.RC_ACCEPT)
 
         self._logger.debug('done')
 
@@ -141,64 +159,40 @@ class CmdHandler(socketserver.StreamRequestHandler):
         ret = {'rc': 'OK', 'data': devlist}
         return ret
 
-    def cmd_buttonlist(self, dev_name):
-        self._logger.debug('dev_name=%s', dev_name)
-
-        buttonlist = self._svr._irsend.get_macro_and_button(dev_name)
-        self._logger.debug('buttonlist=%s', buttonlist)
-        if buttonlist is None:
-            ret = {'rc': 'NG', 'data': '%s: no such device' % dev_name}
-        else:
-            ret = {'rc': 'OK', 'data': buttonlist}
-        return ret
-
     def cmd_help(self):
         self._logger.debug('')
 
 
 class CmdServer(socketserver.ThreadingTCPServer):
-    DEF_PORT = 12352
+    DEF_PORT = 12399
 
-    CMD = {'ECHO': '@echo',
-           'SLEEP': '@sleep',
-           'LOAD': '@load',
-           'END': '@end'}
-
-    def __init__(self, cmdq, irsend, port, debug=False):
+    def __init__(self, cmdq, port=DEF_PORT, debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
         self._logger.debug('port=%s', port)
 
         self._cmdq = cmdq
-        self._irsend = irsend
-        self._port = port
+        self._port = port or self.DEF_PORT
 
         self._active = False
         self.allow_reuse_address = True  # Important !!
+
         while not self._active:
             try:
-                super().__init__(('', self._port), IrSendHandler)
+                super().__init__(('', self._port), CmdServerHandler)
                 self._active = True
                 self._logger.debug('_active=%s', self._active)
             except PermissionError as e:
                 self._logger.error('%s:%s.', type(e), e)
                 raise
             except OSError as e:
-                self._logger.error('%s:%s.', type(e), e)
+                self._logger.error('%s:%s .. retry', type(e), e)
                 time.sleep(5)
             except Exception as e:
                 self._logger.error('%s:%s.', type(e), e)
                 raise
 
         self._logger.debug('done')
-
-    """
-    # self.allow_reuse_address = True としてるため、以下は不要
-    def server_bind(self):
-        self._logger.debug('')
-        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.socket.bind(self.server_address)
-    """
 
     def serve_forever(self):
         self._logger.debug('start')
@@ -218,27 +212,25 @@ class CmdServer(socketserver.ThreadingTCPServer):
         self._active = False  # handle()を終了させる
         self._logger.debug('done')
 
-    def irsend(self, dev, btn):
-        self._logger.debug('dev=%s, btn=%s', dev, btn)
 
-        ret = {'rc': 'OK', 'dev': dev, 'btn': btn}
-        return ret
-
-
-class App:
+class CmdServerApp:
     """
     """
+    CMD = {'ECHO': '@echo',
+           'SLEEP': '@sleep',
+           'LOAD': '@load',
+           'END': '@end'}
+
     def __init__(self, port, debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
         self._logger.debug('port=%s', port)
 
-        self._port = port or CmdServer.DEF_PORT
+        self._port = port
 
         self._cmdq = queue.Queue()
 
-        self._svr = CmdServer(self._cmdq, self._irsend, self._port,
-                                 self._debug)
+        self._svr = CmdServer(self._cmdq, self._port, self._debug)
         self._svr_th = threading.Thread(target=self._svr.serve_forever,
                                         daemon=True)
 
@@ -249,10 +241,10 @@ class App:
 
         while True:
             cmdline = self._cmdq.get()
-            self._logger.debug('cmdline=%s', cmdline)
+            self._logger.info('cmdline=%s', cmdline)
 
-            self._logger.info(msg)
-            self._irsend.send(dev_name, button_name)
+            # exec cmd
+
             time.sleep(0.1)
 
     def end(self):
@@ -267,20 +259,18 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
 @click.command(context_settings=CONTEXT_SETTINGS,
-               help='IR signal send server')
+               help='TCP Server Template')
 @click.option('--port', 'port', type=int,
               help='port number')
-@click.option('--pin', 'pin', type=int,
-              help='GPIO pin number')
 @click.option('--debug', '-d', 'debug', is_flag=True, default=False,
               help='debug flag')
-def main(port, pin, debug):
+def main(port, debug):
     logger = get_logger(__name__, debug)
-    logger.debug('port=%s, pin=%s', port, pin)
+    logger.debug('port=%s', port)
 
     logger.info('start')
 
-    app = App(port, pin, debug=debug)
+    app = CmdServerApp(port, debug=debug)
     try:
         app.main()
     finally:
