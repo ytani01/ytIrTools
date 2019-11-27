@@ -244,7 +244,7 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
                 rc, msg = self._svr._app._cmd._cmd[args[0]][Cmd.FUNC_I](args)
 
                 self._logger.info('rc=%s, msg=%s', rc, msg)
-                self.send_reply(rc, msg)
+                #self.send_reply(rc, msg)
                 if rc != Cmd.RC_CONT:
                     continue
 

@@ -35,13 +35,18 @@ class IrSendCmd(Cmd):
 
         m_and_b = self._irsend.get_macro_and_button(args[1])
         if m_and_b is None:
-            msg = '%a: no such device' % args[1]
+            msg = '%s: no such device' % args[1]
             self._logger.error(msg)
             return self.RC_NG, msg
-        
+
         if len(args) == 2:
             return self.RC_OK, m_and_b
 
+        if args[2] not in  m_and_b['buttons']:
+            msg = '%s:%s: no such button' % (args[1], args[2])
+            self._logger.error(msg)
+            return self.RC_NG, msg
+        
         return self.RC_CONT, None
 
     def cmd_q_irsend(self, args):
