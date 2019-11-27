@@ -142,7 +142,7 @@ class IrSend:
 
     SIG_BITS_MIN = 5
 
-    def __init__(self, pin, load_conf=False, debug=False):
+    def __init__(self, pin=DEF_PIN, load_conf=False, debug=False):
         self._debug = debug
         self.logger = get_logger(__class__.__name__, debug)
         self.logger.debug('pin: %d', pin)

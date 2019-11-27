@@ -24,7 +24,6 @@ __author__ = 'Yoichi Tanibayashi'
 __date__   = '2019'
 
 
-from IrSendClient import IrSendClient
 import socketserver
 import socket
 import threading
@@ -35,12 +34,93 @@ import time
 from MyLogger import get_logger
 
 
+class Cmd:
+    RC_OK = 'OK'  # OK .. キューイング不要
+    RC_NG = 'NG'  # NG
+    RC_CONT = 'CONTINUE'  # 事前チェックOK .. キューイングに続く
+    RC_ACCEPT = 'ACCEPT'  # キューイングOK(その後、実行の成否は不明)
+
+    FUNC_I = 'func_i'
+    FUNC_Q = 'func_q'
+    HELP_STR = 'help'
+
+    def __init__(self, debug=False):
+        self._debug = debug
+        self._logger = get_logger(__class__.__name__, self._debug)
+        self._logger.debug('')
+
+        self.add_cmd('sleep', self.cmd_i_sleep, self.cmd_q_sleep,
+                     'sleep')
+        self.add_cmd('help', self.cmd_i_help, None,
+                     'command help')
+
+    def add_cmd(self, name, func_i, func_q, help_str):
+        self._logger.debug('name=%a, func_i=%a, func_q=%a, help_str=%a',
+                           name, func_i, func_q, help_str)
+
+        try:
+            self._cmd
+        except AttributeError:
+            self._logger.debug('create: self._cmd')
+            self._cmd = {}
+
+        self._cmd[name] = {
+            self.FUNC_I: func_i,
+            self.FUNC_Q: func_q,
+            self.HELP_STR: help_str
+        }
+
+    def cmd_i_help(self, args):
+        self._logger.debug('args=%a', args)
+
+        if len(args) >= 2:
+            if args[1] in self._cmd:
+                msg = self._cmd[args[1]]['help']
+                rc = self.RC_OK
+                return rc, msg
+            else:
+                msg = '%s: no such command' % args[1]
+                rc = self.RC_NG
+                return rc, msg
+
+        # command list
+        msg = []
+        for c in self._cmd:
+            msg.append([c, self._cmd[c]['help']])
+
+        rc = self.RC_OK
+        return rc, msg
+
+    def cmd_i_sleep(self, args):
+        self._logger.debug('args=%a', args)
+
+        msg = None
+        try:
+            float(args[1])
+            rc = self.RC_OK
+        except Exception as e:
+            rc = self.RC_NG
+            msg = '%s: %s' % (type(e), e)
+        return rc, msg
+
+    def cmd_q_sleep(self, args):
+        self._logger.debug('args=%a', args)
+
+        msg = None
+        try:
+            sleep_sec = float(args[1])
+        except Exception as e:
+            rc = self.RC_NG
+            msg = '%s: %s' % (type(e), e)
+            return rc, msg
+
+        time.sleep(sleep_sec)
+        rc = self.RC_OK
+        return rc, msg
+
+
 class CmdServerHandler(socketserver.StreamRequestHandler):
     DEF_HANDLE_TIMEOUT = 3  # sec
-
-    RC_ACCEPT = 'ACCEPT'
-    RC_OK = 'OK'
-    RC_NG = 'NG'
 
     def __init__(self, req, c_addr, svr):
         self._debug = svr._debug
@@ -48,11 +128,6 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
         self._logger.debug('c_addr=%s', c_addr)
 
         self._svr = svr
-
-        self._cmd = {
-            'ir1': {'func': self.cmd_irsend, 'help': 'send IR signal'},
-            'help': {'func': self.cmd_help, 'help': 'help command'}
-        }
 
         self._active = False
 
@@ -115,18 +190,18 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
                 in_data = self.request.recv(512).strip()
 
             except socket.timeout as e:
-                self._logger.warning('%s:%s.', type(e), e)
-                self._logger.warning('_svr._active=%s', self._svr._active)
+                self._logger.debug('%s:%s.', type(e), e)
+                self._logger.debug('_svr._active=%s', self._svr._active)
                 if self._svr._active:
                     # サーバーが生きている場合は、継続
                     continue
                 else:
-                    self.send_reply(self.RC_NG, 'server is inactive.')
+                    self.send_reply(Cmd.RC_NG, 'server is inactive.')
                     break
             except Exception as e:
                 self._logger.warning('%s:%s.', type(e), e)
                 msg = 'error %s:%s' % (type(e), e)
-                self.send_reply(self.RC_NG, msg)
+                self.send_reply(Cmd.RC_NG, msg)
                 break
             else:
                 self._logger.debug('in_data=%a', in_data)
@@ -141,7 +216,7 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
             except UnicodeDecodeError as e:
                 msg = '%s:%s .. ignored' % (type(e), e)
                 self._logger.error(msg)
-                self.send_reply(self.RC_NG, msg)
+                self.send_reply(Cmd.RC_NG, msg)
                 break
             else:
                 self._logger.debug('decoded_data=%a', decoded_data)
@@ -152,70 +227,50 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
             if len(args) == 0:
                 msg = 'no command'
                 self._logger.warning(msg)
-                self.send_reply(self.RC_NG, msg)
+                self.send_reply(Cmd.RC_NG, msg)
                 break
 
-            if args[0] in self._cmd:
+            if args[0] not in self._svr._app._cmd._cmd:
+                msg = '%s: no such command .. ignored' % args[0]
+                self._logger.error(msg)
+                self.send_reply(Cmd.RC_NG, msg)
+                continue
+
+            if self._svr._app._cmd._cmd[args[0]][Cmd.FUNC_I] is not None:
                 #
                 # interactive command
                 #
-                self._logger.info('exec %a', args[0])
-                rc, msg = self._cmd[args[0]]['func'](args)
+                self._logger.info('call %a', args)
+                rc, msg = self._svr._app._cmd._cmd[args[0]][Cmd.FUNC_I](args)
+
                 self._logger.info('rc=%s, msg=%s', rc, msg)
                 self.send_reply(rc, msg)
+                if rc != Cmd.RC_CONT:
+                    continue
+
+            if self._svr._app._cmd._cmd[args[0]][Cmd.FUNC_Q] is None:
                 continue
 
             #
             # queued command
             #
-            if args[0] not in self._svr._app._cmd:
-                msg = '%s: no such command .. ignored' % args[0]
-                self._logger.error(msg)
-                self.send_reply(self.RC_NG, msg)
-                continue
-
             qsize = self._svr._app._cmdq.qsize()
             if qsize > 100:
                 msg = 'qsize=%d: server busy' % qsize
                 self._logger.warning(msg)
-                self.send_reply(self.RC_NG, msg)
+                self.send_reply(Cmd.RC_NG, msg)
 
             try:
                 self._svr._app._cmdq.put(args, block=False)
             except Exception as e:
                 msg = '%s:%s' % (type(e), e)
                 self._logger.error(msg)
-                self.send_reply(self.RC_NG, msg)
+                self.send_reply(Cmd.RC_NG, msg)
                 break
             else:
-                self.send_reply(self.RC_ACCEPT)
+                self.send_reply(Cmd.RC_ACCEPT)
 
         self._logger.debug('done')
-
-    def cmd_help(self, args):
-        self._logger.debug('args=%s', args)
-
-        msg = []
-        for c in self._cmd:
-            msg.append([c, self._cmd[c]['help']])
-        for c in self._svr._app._cmd:
-            msg.append([c, self._svr._app._cmd[c]['help']])
-
-        rc = self.RC_OK
-        return rc, msg
-
-    def cmd_irsend(self, args):
-        self._logger.debug('args=%s', args)
-
-        irsend_cl = IrSendClient(debug=self._debug)
-        ret = irsend_cl.send_recv(' '.join(args[1:]))
-        self._logger.info('ret=%s', ret)
-
-        rc = ret['rc']
-        msg = None
-        if 'data' in ret:
-            msg = ret['data']
-        return rc, msg
 
 
 class CmdServer(socketserver.ThreadingTCPServer):
@@ -279,12 +334,9 @@ class CmdServerApp:
         self._logger = get_logger(__class__.__name__, self._debug)
         self._logger.debug('port=%s', port)
 
-        self._cmd = {
-            'ir2': {'func': self.cmd_irsend, 'help': 'send IR signal'},
-            'sleep': {'func': self.cmd_sleep, 'help': 'sleep sec'}
-        }
-
         self._cmdq = queue.Queue()
+
+        self._cmd = Cmd(debug=self._debug)
 
         self._svr = CmdServer(self, port, self._debug)
         self._svr_th = threading.Thread(target=self._svr.serve_forever,
@@ -299,14 +351,19 @@ class CmdServerApp:
             args = self._cmdq.get()
             self._logger.info('args=%s', args)
 
-            # exec cmd
-            if args[0] in self._cmd:
-                self._logger.info('exec %a', args[0])
-                rc, msg = self._cmd[args[0]]['func'](args)
-                if rc == self.RC_OK:
-                    self._logger.info('rc=%a, msg=%a', rc, msg)
+            # call cmd
+            if args[0] in self._cmd._cmd:
+                if self._cmd._cmd[args[0]][Cmd.FUNC_Q] is not None:
+                    self._logger.info('call %a', args[0])
+                    rc, msg = self._cmd._cmd[args[0]][Cmd.FUNC_Q](args)
+
+                    if rc == Cmd.RC_OK:
+                        self._logger.info('rc=%a, msg=%a', rc, msg)
+                    else:
+                        self._logger.error('rc=%a, msg=%a', rc, msg)
                 else:
-                    self._logger.error('rc=%a, msg=%a', rc, msg)
+                    self._logger.error('%s: no %s .. ignored',
+                                       args[0], Cmd.FUNC_Q)
             else:
                 self._logger.error('%s: no such command .. ignored', args[0])
 
@@ -317,36 +374,7 @@ class CmdServerApp:
         self._svr.end()
         self._logger.debug('done')
 
-    def cmd_irsend(self, args):
-        self._logger.debug('args=%s', args)
 
-        irsend_cl = IrSendClient(debug=self._debug)
-        ret = irsend_cl.send_recv(' '.join(args[1:]))
-        self._logger.info('ret=%s', ret)
-
-        rc = ret['rc']
-        msg = None
-        if 'data' in ret:
-            msg = ret['data']
-        return rc, msg
-
-    def cmd_sleep(self, args):
-        self._logger.debug('args=%s', args)
-
-        msg = None
-        try:
-            sleep_sec = float(args[1])
-        except Exception as e:
-            rc = self.RC_NG
-            msg = '%s: %s' % (type(e), e)
-            return rc, msg
-
-        time.sleep(sleep_sec)
-        rc = self.RC_OK
-        return rc, None
-
-
-#####
 import click
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 

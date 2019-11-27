@@ -72,7 +72,7 @@ class TcpCmdClient:
                 self._logger.debug('rep=%a', rep)
 
         rep_str = rep.decode('utf-8').strip()
-        self._logger.debug('rep_str=\'%s\'', rep_str)
+        self._logger.debug('rep_str=%a', rep_str)
         return rep_str
 
 
@@ -91,11 +91,15 @@ class App:
         self._logger.debug('')
 
         rep_str = self._cl.send_recv(self._cmd_text)
+        self._logger.debug('rep_str=%a', rep_str)
+        rep = rep_str.split('\r\n')
+        self._logger.debug('rep=%a', rep)
 
         try:
-            json_data = json.loads(rep_str)
-            json_str = json.dumps(json_data, indent=2, ensure_ascii=False)
-            print(json_str)
+            for r in rep:
+                json_data = json.loads(r)
+                json_str = json.dumps(json_data, indent=2, ensure_ascii=False)
+                print(json_str)
 
         except json.decoder.JSONDecodeError:
             print(rep_str)
@@ -116,7 +120,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
               help='server hostname')
 @click.option('--port', '-p', 'port', type=int, default=DEF_PORT,
               help='server port nubmer')
-@click.option('--timeout', '-t', 'timeout', type=float, default=0.1,
+@click.option('--timeout', '-t', 'timeout', type=float, default=0.5,
               help='timeout sec(float)')
 @click.option('--debug', '-d', 'debug', is_flag=True, default=False,
               help='debug flag')
