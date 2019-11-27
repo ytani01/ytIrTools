@@ -350,12 +350,12 @@ class CmdServerApp:
 
         while True:
             args = self._cmdq.get()
-            self._logger.info('args=%s', args)
+            self._logger.info('args=%a', args)
 
             # call cmd
             if args[0] in self._cmd._cmd:
                 if self._cmd._cmd[args[0]][Cmd.FUNC_Q] is not None:
-                    self._logger.info('call %a', args[0])
+                    self._logger.debug('call %a', args)
                     rc, msg = self._cmd._cmd[args[0]][Cmd.FUNC_Q](args)
 
                     if rc == Cmd.RC_OK:
