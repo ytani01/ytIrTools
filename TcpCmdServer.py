@@ -259,6 +259,7 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
                 msg = 'qsize=%d: server busy' % qsize
                 self._logger.warning(msg)
                 self.send_reply(Cmd.RC_NG, msg)
+                continue
 
             try:
                 self._svr._app._cmdq.put(args, block=False)
