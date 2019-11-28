@@ -3,13 +3,18 @@
 # (c) 2019 Yoichi Tanibayashi
 #
 """
-TcpCmdServer -- サーバープログラムのテンプレート
+TcpCmdServer -- サーバープログラムのベース
 
-要求(コマンド文字列)を受け取り、
-対応するコマンド(関数)をサーバー側で実行する。
+クライアントからの要求(コマンド文字列)を受け取り、
+対応するコマンド(関数)を実行する。
 
-コマンドには、CmdServerHandler で即座に実行されるものと、
-キューイングされて、CmdServerApp で順に実行されるものがある。
+コマンドには、
+CmdServerHandler で即時に実行される関数(FUNC_I)と、
+キューイングされて、CmdServerApp で順に実行される関数(FUNC_Q)を
+登録できる。
+
+FAUNC_I は、複数クライアントからの要求が並列実行される(マルチスレッド)。
+FAUNC_Q は、並列実行されず、必ず順に一つずつ実行される(シングルスレッド)。
 
 
 main()
@@ -35,10 +40,22 @@ from MyLogger import get_logger
 
 
 class Cmd:
-    RC_OK = 'OK'  # OK .. キューイング不要
+    """
+    __init__()を override する。
+    self.add_cmd()でコマンドを登録。
+    最後に、super().__init__() を呼び出す。
+
+    コマンドに対応する関数を定義する。
+
+      def cmd_..(self, args):
+        :
+        return rc, msg
+
+    """
+    RC_OK = 'OK'  # OK .. FUNC_I の場合は、キューイング不要
     RC_NG = 'NG'  # NG
-    RC_CONT = 'CONTINUE'  # 事前チェックOK .. キューイングに続く
-    RC_ACCEPT = 'ACCEPT'  # キューイングOK(その後、実行の成否は不明)
+    RC_CONT = 'CONTINUE'  # FUNC_I 正常終了 .. キューイングして結果を待つ
+    RC_ACCEPT = 'ACCEPT'  # FUNC_I 正常終了 .. キューイングして結果を待たない
 
     FUNC_I = 'func_i'
     FUNC_Q = 'func_q'
@@ -49,10 +66,10 @@ class Cmd:
         self._logger = get_logger(__class__.__name__, self._debug)
         self._logger.debug('')
 
-        self.add_cmd('sleep', self.cmd_i_sleep, self.cmd_q_sleep,
-                     'sleep')
-        self.add_cmd('help', self.cmd_i_help, None,
-                     'command help')
+        self.add_cmd('sleep', self.cmd_i_sleep, self.cmd_q_sleep, 'sleep')
+        self.add_cmd('help', self.cmd_i_help, None, 'command help')
+        self.add_cmd('shutdown9999', self.cmd_i_shutdown, self.cmd_q_shutdown,
+                     'shutdown server')
 
     def add_cmd(self, name, func_i, func_q, help_str):
         self._logger.debug('name=%a, func_i=%a, func_q=%a, help_str=%a',
@@ -94,33 +111,66 @@ class Cmd:
     def cmd_i_sleep(self, args):
         self._logger.debug('args=%a', args)
 
-        msg = None
         try:
-            float(args[1])
-            rc = self.RC_OK
+            sleep_sec = float(args[1])
         except Exception as e:
             rc = self.RC_NG
-            msg = '%s: %s' % (type(e), e)
+            msg = '%s: %s: %s' % (args[0], type(e), e)
+        else:
+            rc = self.RC_CONT
+            msg = 'sleep_sec=%s' % sleep_sec
+        self._logger.debug(msg)
         return rc, msg
 
     def cmd_q_sleep(self, args):
         self._logger.debug('args=%a', args)
 
-        msg = None
+        rc = self.RC_OK
+
+        sleep_sec = float(args[1])
+        msg = '%s: sleep_sec=%s' % (args[0], sleep_sec)
+
+        time.sleep(sleep_sec)
+        self._logger.debug('sleep:done')
+        return rc, msg
+
+    def cmd_i_shutdown(self, args):
+        self._logger.debug('args=%a', args)
+
         try:
             sleep_sec = float(args[1])
         except Exception as e:
             rc = self.RC_NG
-            msg = '%s: %s' % (type(e), e)
-            return rc, msg
+            msg = '%s: %s: %s' % (args[0], type(e), e)
+        else:
+            rc = self.RC_ACCEPT
+            msg = 'sleep_sec=%s' % sleep_sec
+        self._logger.debug(msg)
+        return rc, msg
+
+    def cmd_q_shutdown(self, args):
+        self._logger.debug('args=%a', args)
+
+        rc = self.RC_OK
+
+        sleep_sec = float(args[1])
+
+        msg = '%s: sleep_sec=%s' % (args[0], sleep_sec)
+        self._logger.debug(msg)
 
         time.sleep(sleep_sec)
-        rc = self.RC_OK
+        self._logger.debug('sleep:done')
+
         return rc, msg
 
 
 class CmdServerHandler(socketserver.StreamRequestHandler):
+    """
+    override 不要
+    """
     DEF_HANDLE_TIMEOUT = 3  # sec
+
+    EOF = '\x04'
 
     def __init__(self, req, c_addr, svr):
         self._debug = svr._debug
@@ -130,6 +180,7 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
         self._svr = svr
 
         self._active = False
+        self._myq = queue.SimpleQueue()
 
         # 変数名は固定: self.request.recv() のタイムアウト
         self.timeout = self.DEF_HANDLE_TIMEOUT
@@ -165,8 +216,8 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
         except Exception as e:
             self._logger.warning('%s:%s.', type(e), e)
 
-    def send_reply(self, rc, msg=None):
-        self._logger.debug('rc=%a, msg=%a', rc, msg)
+    def send_reply(self, rc, msg=None, cont=False):
+        self._logger.debug('rc=%a, msg=%a, cont=%s', rc, msg, cont)
 
         if msg is None:
             rep = {'rc': rc}
@@ -175,6 +226,8 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
         rep_str = json.dumps(rep)
         self._logger.debug('rep_str=%a', rep_str)
         self.net_write(rep_str + '\r\n')
+        if not cont:
+            self.net_write(self.EOF)
 
     def handle(self):
         self._logger.debug('')
@@ -196,7 +249,7 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
                     # サーバーが生きている場合は、継続
                     continue
                 else:
-                    self.send_reply(Cmd.RC_NG, 'server is inactive.')
+                    self.send_reply(Cmd.RC_NG, 'server is dead !')
                     break
             except Exception as e:
                 self._logger.warning('%s:%s.', type(e), e)
@@ -221,7 +274,7 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
             else:
                 self._logger.debug('decoded_data=%a', decoded_data)
 
-            # get cmdline
+            # get args
             args = decoded_data.split()
             self._logger.debug('args=%s', args)
             if len(args) == 0:
@@ -230,6 +283,7 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
                 self.send_reply(Cmd.RC_NG, msg)
                 break
 
+            # check command
             if args[0] not in self._svr._app._cmd._cmd:
                 msg = '%s: no such command .. ignored' % args[0]
                 self._logger.error(msg)
@@ -240,19 +294,29 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
                 #
                 # interactive command
                 #
-                self._logger.info('call %a', args)
+                self._logger.info('call %s: %a', Cmd.FUNC_I, args)
                 rc, msg = self._svr._app._cmd._cmd[args[0]][Cmd.FUNC_I](args)
-
                 self._logger.info('rc=%s, msg=%s', rc, msg)
-                #self.send_reply(rc, msg)
-                if rc != Cmd.RC_CONT:
+
+                if rc != Cmd.RC_CONT and rc != Cmd.RC_ACCEPT:
+                    self.send_reply(rc, msg)
                     continue
 
+                if rc == Cmd.RC_ACCEPT:
+                    self._myq = None
+
+            # check FANC_Q
             if self._svr._app._cmd._cmd[args[0]][Cmd.FUNC_Q] is None:
+                msg2 = '%s: %s is None .. ignored' % (args[0], Cmd.FUNC_Q)
+                self._logger.warning(msg2)
+                if msg is None:
+                    self.send_reply(Cmd.RC_OK, msg2)
+                else:
+                    self.send_reply(Cmd.RC_OK, msg)
                 continue
 
             #
-            # queued command
+            # queuing
             #
             qsize = self._svr._app._cmdq.qsize()
             if qsize > 100:
@@ -261,20 +325,36 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
                 self.send_reply(Cmd.RC_NG, msg)
                 continue
 
+            # put args to queue
             try:
-                self._svr._app._cmdq.put(args, block=False)
+                self._svr._app._cmdq.put((args, self._myq), block=False)
             except Exception as e:
                 msg = '%s:%s' % (type(e), e)
                 self._logger.error(msg)
                 self.send_reply(Cmd.RC_NG, msg)
-                break
-            else:
-                self.send_reply(Cmd.RC_ACCEPT)
+                continue
+
+            # if _myq is None (RC_ACCEPT), send reply now
+            if self._myq is None:
+                self._logger.debug('reply queue is None .. send reply')
+                self.send_reply(Cmd.RC_OK, msg)
+                continue
+
+            # wait result from _myq
+            self._logger.debug('wait result')
+            rc, msg = self._myq.get()
+            self._logger.info('rc=%s, msg=%s', rc, msg)
+
+            # send reply
+            self.send_reply(rc, msg)
 
         self._logger.debug('done')
 
 
 class CmdServer(socketserver.ThreadingTCPServer):
+    """
+    override 不要
+    """
     DEF_PORT = 12399
 
     def __init__(self, app, port=DEF_PORT, debug=False):
@@ -326,9 +406,15 @@ class CmdServer(socketserver.ThreadingTCPServer):
 
 class CmdServerApp:
     """
+    __init__()を override する。
+
+    最初に super().__init__()を呼び出す。
+    self._cmdに Cmdクラスのサブクラスを設定する。
     """
     RC_OK = 'OK'
     RC_NG = 'NG'
+
+    SHUTDOWN_CMD = 'shutdown9999'
 
     def __init__(self, port, debug=False):
         self._debug = debug
@@ -344,18 +430,18 @@ class CmdServerApp:
                                         daemon=True)
 
     def main(self):
-        self._logger.debug('%s', self._svr_th.daemon)
+        self._logger.debug('_svr_th.daemon=%s', self._svr_th.daemon)
 
         self._svr_th.start()
 
         while True:
-            args = self._cmdq.get()
+            args, repq = self._cmdq.get()
             self._logger.info('args=%a', args)
 
             # call cmd
             if args[0] in self._cmd._cmd:
                 if self._cmd._cmd[args[0]][Cmd.FUNC_Q] is not None:
-                    self._logger.debug('call %a', args)
+                    self._logger.debug('call %s: %a', Cmd.FUNC_Q, args)
                     rc, msg = self._cmd._cmd[args[0]][Cmd.FUNC_Q](args)
 
                     if rc == Cmd.RC_OK:
@@ -363,15 +449,33 @@ class CmdServerApp:
                     else:
                         self._logger.error('rc=%a, msg=%a', rc, msg)
                 else:
-                    self._logger.error('%s: no %s .. ignored',
-                                       args[0], Cmd.FUNC_Q)
+                    rc = Cmd.RC_NG
+                    msg = '%s: no %s .. ignored' % (args[0], Cmd.FUNC_Q)
+                    self._logger.error(msg)
             else:
-                self._logger.error('%s: no such command .. ignored', args[0])
+                rc = Cmd.RC_NG
+                msg = '%s: no such command .. ignored' % args[0]
+                self._logger.error(msg)
+
+            if repq is not None:
+                self._logger.debug('put reply')
+                repq.put((rc, msg))
+
+            # shutdown check
+            if args[0] == self.SHUTDOWN_CMD:
+                self._logger.info('shutdown !!')
+                time.sleep(1)
+                break
 
             time.sleep(0.1)
 
+        self._logger.debug('done')
+
     def end(self):
         self._logger.debug('')
+        while not self._cmdq.empty():
+            args, repq = self._cmdq.get()
+            repq.put((Cmd.RC_NG, 'terminated'))
         self._svr.end()
         self._logger.debug('done')
 

@@ -3,6 +3,8 @@
 # (c) 2019 Yoichi Tanibayashi
 #
 """
+IrSendCmdServer.py
+
 """
 __author__ = 'Yoichi Tanibayashi'
 __date__   = '2019'
@@ -19,14 +21,16 @@ class IrSendCmd(Cmd):
         self._logger = get_logger(__class__.__name__, self._debug)
         self._logger.debug('gpio=%a', gpio)
 
-        self._irsend = IrSend(gpio, load_conf=True, debug=self._debug)
+        # コマンド追加
+        self.add_cmd('irsend', None, self.cmd_q_irsend, 'send IR signal')
 
-        self.add_cmd('irsend', self.cmd_i_irsend, self.cmd_q_irsend,
-                     'send IR signal')
+        # サーバー独自の設定
+        self._irsend = IrSend(gpio, load_conf=True, debug=False)
 
+        # 最後に super()__init__()
         super().__init__(debug=self._debug)
 
-    def cmd_i_irsend(self, args):
+    def cmd_q_irsend(self, args):
         self._logger.debug('args=%a', args)
 
         if len(args) == 1:
@@ -42,15 +46,10 @@ class IrSendCmd(Cmd):
         if len(args) == 2:
             return self.RC_OK, m_and_b
 
-        if args[2] not in  m_and_b['buttons']:
+        if args[2] not in m_and_b['buttons']:
             msg = '%s:%s: no such button' % (args[1], args[2])
             self._logger.error(msg)
             return self.RC_NG, msg
-        
-        return self.RC_CONT, None
-
-    def cmd_q_irsend(self, args):
-        self._logger.debug('args=%a', args)
 
         if len(args) < 3:
             return self.RC_OK, None

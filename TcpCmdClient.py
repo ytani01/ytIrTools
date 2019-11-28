@@ -23,6 +23,8 @@ DEF_PORT = 12351
 class TcpCmdClient:
     DEF_TIMEOUT = 2.5  # sec
 
+    EOF = b'\04'
+
     def __init__(self, host, port, timeout=DEF_TIMEOUT, debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
@@ -42,7 +44,7 @@ class TcpCmdClient:
         if timeout is None:
             timeout = self._timeout
             self._logger.debug('timeout=%s', timeout)
-            
+
         with telnetlib.Telnet(self._svr_host, self._svr_port) as tn:
             try:
                 out_data = cmd_text.encode('utf-8')
@@ -59,7 +61,7 @@ class TcpCmdClient:
             while True:
                 in_data = b''
                 try:
-                    in_data = tn.read_until(b'__dummy__', timeout=timeout)
+                    in_data = tn.read_until(self.EOF, timeout=timeout)
                     self._logger.debug('in_data=%a', in_data)
                 except Exception as e:
                     self._logger.warning('%s: %s.', type(e), e)
@@ -70,6 +72,10 @@ class TcpCmdClient:
 
                 rep += in_data
                 self._logger.debug('rep=%a', rep)
+                if self.EOF in rep:
+                    self._logger.debug('EOF')
+                    rep = rep[:-1]
+                    break
 
         rep_str = rep.decode('utf-8').strip()
         self._logger.debug('rep_str=%a', rep_str)
@@ -120,7 +126,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
               help='server hostname')
 @click.option('--port', '-p', 'port', type=int, default=DEF_PORT,
               help='server port nubmer')
-@click.option('--timeout', '-t', 'timeout', type=float, default=0.5,
+@click.option('--timeout', '-t', 'timeout', type=float, default=2,
               help='timeout sec(float)')
 @click.option('--debug', '-d', 'debug', is_flag=True, default=False,
               help='debug flag')
