@@ -25,25 +25,35 @@ class TcpCmdClient:
 
     EOF = b'\04'
 
-    def __init__(self, host, port, timeout=DEF_TIMEOUT, debug=False):
+    def __init__(self, host, port, timeout=DEF_TIMEOUT, newline=False,
+                 debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
-        self._logger.debug('host=%s, port=%s, timeout=%.1f',
-                           host, port, timeout)
+        self._logger.debug('host=%s, port=%s, timeout=%.1f, newline=%s',
+                           host, port, timeout, newline)
 
         self._svr_host = host
         self._svr_port = port
         self._timeout = timeout
+        self._newline = newline
 
     def end(self):
         self._logger.debug('')
 
-    def send_recv(self, cmd_text, timeout=None):
-        self._logger.debug('cmd_text=%a, timeout=%s', cmd_text, timeout)
+    def send_recv(self, cmd_text, timeout=None, nl=None):
+        self._logger.debug('cmd_text=%a, timeout=%s, nl=%s',
+                           cmd_text, timeout, nl)
 
         if timeout is None:
             timeout = self._timeout
             self._logger.debug('timeout=%s', timeout)
+
+        if nl is None:
+            nl = self._newline
+
+        if nl:
+            cmd_text += '\r\n'
+            self._logger.debug('cmd_text=%a', cmd_text)
 
         with telnetlib.Telnet(self._svr_host, self._svr_port) as tn:
             try:
@@ -83,15 +93,16 @@ class TcpCmdClient:
 
 
 class App:
-    def __init__(self, cmd_text, host, port, timeout, debug=False):
+    def __init__(self, cmd_text, host, port, timeout, newline, debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
-        self._logger.debug('cmd_text=%s, host=%s, port=%d',
-                           cmd_text, host, port)
+        self._logger.debug('cmd_text=%s, host=%s, port=%d, newline=%s',
+                           cmd_text, host, port, newline)
 
         self._cmd_text = cmd_text
 
-        self._cl = TcpCmdClient(host, port, timeout, debug=self._debug)
+        self._cl = TcpCmdClient(host, port, timeout, newline,
+                                debug=self._debug)
 
     def main(self):
         self._logger.debug('')
@@ -128,17 +139,20 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
               help='server port nubmer')
 @click.option('--timeout', '-t', 'timeout', type=float, default=2,
               help='timeout sec(float)')
+@click.option('--newline', '--nl', '-n', 'newline',
+              is_flag=True, default=False,
+              help='append newline')
 @click.option('--debug', '-d', 'debug', is_flag=True, default=False,
               help='debug flag')
-def main(arg, svrhost, port, timeout, debug):
+def main(arg, svrhost, port, timeout, newline, debug):
     logger = get_logger(__name__, debug)
-    logger.debug('arg=%s, svrhost=%s, port=%d, timeout=%.1f',
-                 arg, svrhost, port, timeout)
+    logger.debug('arg=%s, svrhost=%s, port=%d, timeout=%.1f, newline=%s',
+                 arg, svrhost, port, timeout, newline)
 
     arg_str = ' '.join(list(arg))
     logger.debug('arg_str=%s', arg_str)
 
-    app = App(arg_str, svrhost, port, timeout, debug=debug)
+    app = App(arg_str, svrhost, port, timeout, newline, debug=debug)
     try:
         app.main()
     finally:

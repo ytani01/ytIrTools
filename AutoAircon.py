@@ -148,7 +148,7 @@ class AutoAircon(threading.Thread):
     DEF_KI_I_MAX = 5.0
 
     REMOCON_TEMP_MIN = 22
-    REMOCON_TEMP_MAX = 29
+    REMOCON_TEMP_MAX = 30
 
     def __init__(self, target_temp, temp=None, aircon=None, aa_stat=None,
                  kp=DEF_KP, ki=DEF_KI, kd=DEF_KD, ki_i_max=DEF_KI_I_MAX,
@@ -247,7 +247,7 @@ class AutoAircon(threading.Thread):
             if pid is None:
                 continue
 
-            remocon_temp = self._target_temp - pid
+            remocon_temp = self._target_temp + pid
             self._logger.debug('remocon_temp=%.2f', remocon_temp)
             remocon_temp = round(remocon_temp)
             if remocon_temp < self.REMOCON_TEMP_MIN:
@@ -471,7 +471,7 @@ class AutoAircon(threading.Thread):
 
         # P
         p_ = ave_temp - self._target_temp
-        kp_p = self._kp * p_
+        kp_p = -self._kp * p_
 
         # I
         d_ts = cur_ts - prev_ts
@@ -479,13 +479,13 @@ class AutoAircon(threading.Thread):
         i_temp -= self._target_temp * d_ts
         self._logger.debug('_i=%f, i_temp=%f', self._i, i_temp)
         i_ = self._i + i_temp
-        ki_i = self._ki * i_
+        ki_i = -self._ki * i_
         if abs(ki_i) <= self._ki_i_max:
             self._i = i_
 
         # D
         d_ = (cur_temp - first_temp) / (cur_ts - first_ts)
-        kd_d = self._kd * d_
+        kd_d = -self._kd * d_
 
         # PID
         pid = kp_p + ki_i + kd_d
