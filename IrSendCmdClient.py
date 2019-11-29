@@ -27,7 +27,7 @@ class IrSendCmdClient(TcpCmdClient):
         """
         super().__init__(host, port, debug=debug)
 
-    def send_recv(self, args_str):
+    def send_recv(self, args_str, timeout=TcpCmdClient.DEF_TIMEOUT, newline=False):
         self._logger.debug('args_str=%a', args_str)
 
         args_str = self.CMD_NAME + ' ' + args_str
