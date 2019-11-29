@@ -11,6 +11,8 @@ SERIAL_MAX=3
 
 SEND_CMD="IrSend.py"
 
+export PATH=${PATH}:${HOME}/bin
+
 if [ ! -f ${SERIAL_NUM_FILE} ]; then
     echo 0 > ${SERIAL_NUM_FILE}
 fi
