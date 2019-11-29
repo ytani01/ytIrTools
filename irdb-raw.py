@@ -15,16 +15,16 @@ from MyLogger import get_logger
 #####
 class App:
     def __init__(self, file, debug=False):
-        self.debug = debug
-        self.logger = get_logger(__class__.__name__, self.debug)
-        self.logger.debug('file=%s', file)
+        self._debug = debug
+        self._logger = get_logger(__class__.__name__, self._debug)
+        self._logger.debug('file=%s', file)
 
         self.file = file
 
-        self.an = IrAnalyze(debug=self.debug)
+        self.an = IrAnalyze(debug=self._debug)
 
     def main(self):
-        self.logger.debug('')
+        self._logger.debug('')
 
         with open(self.file, 'r') as f:
             line = f.readlines()
@@ -38,17 +38,17 @@ class App:
                     raw_data.append([int(w)])
                 else:
                     raw_data[-1].append(-int(w))
-                self.logger.debug('raw_data=%s', raw_data)
+                self._logger.debug('raw_data=%s', raw_data)
                 i += 1
-        self.logger.debug('raw_data=%s', raw_data)
+        self._logger.debug('raw_data=%s', raw_data)
 
         result = self.an.analyze(raw_data)
-        self.logger.debug('result=%s', result)
+        self._logger.debug('result=%s', result)
 
         print(self.an.json_dumps(result))
 
     def end(self):
-        self.logger.debug('')
+        self._logger.debug('')
 
 
 #####
@@ -56,6 +56,8 @@ import click
 
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+
+
 @click.command(context_settings=CONTEXT_SETTINGS,
                help='irdb raw format analyzer')
 @click.argument('file')

@@ -1,10 +1,10 @@
 # ytIrTools for Raspberry Pi
-### pigpio + python3 による、赤外線リモコン制御・解析ツール
+### Raspberry Pi + pigpio + python3 による、赤外線リモコン制御・解析ツール
 
 ## 概要
 
 * LIRCなどは使わず、pigpioのPythonライブラリで作成 -- 高性能で高い柔軟性
-* 正確な信号解析。
+* 正確な信号解析。(IrAnalyze.py)
 * 信号フォーマットは、AEHA,SONY,NEC以外に、DYSON,BOSEなどの一部機器にも対応
 * 送受信を同時に行える。
 * 赤外線送受信につかうGPIOピンを(PWM用の12, 13, 18以外で)自由に選べる
@@ -20,17 +20,48 @@ PWM用のピン(GPIO 12,13,18)は、使用できなくなります。
 
 ## Comands
 
-### pigpiod
+### [pigpiod](http://abyz.me.uk/rpi/pigpio/)
 
 事前に pigpiod を起動しておいてください。
 
 ```bash
 $ sudo pigpiod -t 0
 ```
-オプション「-t 0」がないと、不安定になる(?)
+※オプション「-t 0」がないと、不安定になる(?)
 
 自動起動する場合は、crontabを設定。(crontab.sample参照)
 
+※(注意) コマンド "crontab crontab.sample" を実行すると、
+今までの crontabが全て消去されます！
+
+
+### IrSendServer.py -- 赤外線信号送信サーバー
+
+
+
+### IrSendClient.py -- 赤外線信号送信クライアント
+
+
+
+### IrSendClient.py -- 赤外線信号送信
+
+デバイス名とボタン名を指定して、赤外線信号を送信する。
+デバイス名・ボタンの設定は後述。
+
+引数がない場合は、デバイス一覧、
+デバイス名だけを指定した場合は、ボタン一覧
+を表示。
+```
+Usage: ir-send [OPTIONS] [ARG]...
+
+  IrSendClient
+
+Options:
+  -s, --svrhost TEXT  server hostname
+  -p, --port INTEGER  server port nubmer
+  -d, --debug         debug flag
+  -h, --help          Show this message and exit.
+```
 
 ### IrAnalyze.py -- 赤外線信号受信・解析
 
@@ -56,28 +87,21 @@ Options:
 ```
 
 
-### IrSend.py -- 赤外線信号送信
+## 設定ファイル(*.irconf)
 
-デバイス名とボタン名を指定して、赤外線信号を送信する。
-デバイス名・ボタンの設定は後述
+* 一つのファイルに複数のデバイス設定を記述することができる。
+* IrAnalyze.py の出力(/tmp/ir_dump.irconf)を元に、
+デバイス名、ボタン名などを設定できる。
+* マクロ文字列を使えば、効率良く、わかりやすい記述が可能。
 
-```
-Usage: IrSend.py [OPTIONS] DEV_NAME [BUTTONS]...
+### ファイル名
 
-  IR signal transmitter
+* 拡張子は「.irconf」。これ以外のファイルは無視される。
 
-Options:
-  -p, --pin INTEGER     pin number
-  -n INTEGER
-  -i, --interval FLOAT
-  -d, --debug           debug flag
-  -h, --help            Show this message and exit.
-```
-
-
-## *.irconf -- 設定ファイル
 
 ### 検索パス
+
+下記のパスに存在する全ての``*.irconf''ファイルを読み込む。
 
 1. カレントディレクトリ
 2. ${HOME}/.irconf.d
@@ -86,11 +110,7 @@ Options:
 
 ### 書式 -- JSON
 
-下記の例のような書式の JSONフォーマット・ファイルを作成する。
-
-検索パスの全irconfファイルが読み込まれる。
-
-拡張子は「.irconf」。これ以外のファイルは無視される。
+下記の書式で、JSONフォーマット・ファイルを作成する。
 
 * example 1
 ```
@@ -151,7 +171,6 @@ Options:
   }
 }
 ```
-
 
 
 ## References

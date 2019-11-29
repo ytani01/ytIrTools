@@ -12,13 +12,14 @@ from IrConfig import IrConfig
 import json
 from MyLogger import get_logger
 
+
 class IrAnalyze:
     """
     raw_data = [[pulse1, space1], [pulse2, space2], ... ]
     """
     RAW_DATA_LEN_MIN = 6
 
-    SIG_LONG =  99999  # usec
+    SIG_LONG = 99999   # usec
     SIG_END  = 999999  # usec
 
     SIG_SYM = {
@@ -40,9 +41,9 @@ class IrAnalyze:
           [[pulse1, space1], [pulse2, space2], ..]
 
         """
-        self.debug = debug
-        self.logger = get_logger(__class__.__name__, self.debug)
-        self.logger.debug('raw_data=%s', raw_data)
+        self._debug = debug
+        self._logger = get_logger(__class__.__name__, self._debug)
+        self._logger.debug('raw_data=%s', raw_data)
 
         self.result   = None
         self.raw_data = raw_data
@@ -57,7 +58,7 @@ class IrAnalyze:
         step: float
 
         """
-        self.logger.debug('data=%s, step=%.1f', data, step)
+        self._logger.debug('data=%s, step=%.1f', data, step)
 
         fq_list = [[]]
         for val in sorted(data):
@@ -108,28 +109,28 @@ class IrAnalyze:
           }
         }
         """
-        self.logger.debug('raw_data=%s', raw_data)
+        self._logger.debug('raw_data=%s', raw_data)
 
         if raw_data != []:
             self.raw_data = raw_data
-            self.logger.debug('raw_data=%s', self.raw_data)
+            self._logger.debug('raw_data=%s', self.raw_data)
 
         if len(raw_data) < self.RAW_DATA_LEN_MIN:
-            self.logger.warning('too short:%s .. ignored',
-                                raw_data)
+            self._logger.warning('too short:%s .. ignored',
+                                 raw_data)
             return None
 
         # pulse + sleep の値のリスト
         self.sum_list = [(d1 + d2) for d1, d2 in self.raw_data]
-        self.logger.debug('sum_list=%s', self.sum_list)
+        self._logger.debug('sum_list=%s', self.sum_list)
 
         # self.sum_listの度数分布
         self.fq_list = self.fq_dist(self.sum_list, 0.2)
-        self.logger.debug('fq_list=%s', self.fq_list)
+        self._logger.debug('fq_list=%s', self.fq_list)
 
         # 単位時間<T> = 度数分布で一番小さいグループの平均の半分
         self.T = (sum(self.fq_list[0]) / len(self.fq_list[0])) / 2
-        self.logger.debug('T=%.2f[us]', self.T)
+        self._logger.debug('T=%.2f[us]', self.T)
 
         # 誤差 td を求める
         self.T1 = {'pulse': [], 'space': []}
@@ -144,8 +145,8 @@ class IrAnalyze:
         self.Td_p = abs(self.T1_ave['pulse'] - self.T)
         self.Td_s = abs(self.T1_ave['space'] - self.T)
         self.Td = (self.Td_p + self.Td_s) / 2
-        self.logger.debug('Td=%.2f, Td_p=%.2f, Td_s=%.2f',
-                          self.Td, self.Td_p, self.Td_s)
+        self._logger.debug('Td=%.2f, Td_p=%.2f, Td_s=%.2f',
+                           self.Td, self.Td_p, self.Td_s)
 
         # self.raw_dataのそれぞれの値(Tdで補正)が、self.Tの何倍か求める
         self.n_list_float = []  # for debug
@@ -157,12 +158,12 @@ class IrAnalyze:
             n_p = round(n_p)
             n_s = round(n_s)
             self.n_list.append([n_p, n_s])
-        self.logger.debug('n_list_float=%s', self.n_list_float)
-        self.logger.debug('n_list=%s', self.n_list)
+        self._logger.debug('n_list_float=%s', self.n_list_float)
+        self._logger.debug('n_list=%s', self.n_list)
 
         # 信号パターン抽出
         self.n_pattern = sorted(list(map(list, set(map(tuple, self.n_list)))))
-        self.logger.debug('n_pattern=%s', self.n_pattern)
+        self._logger.debug('n_pattern=%s', self.n_pattern)
 
         # 信号パターンの解析
         # 信号フォーマットの特定
@@ -249,12 +250,12 @@ class IrAnalyze:
                 for sig in self.sig2n[key]:
                     if sig in self.sig2n[key + '?']:
                         self.sig2n[key + '?'].remove(sig)
-        self.logger.debug('sig2n=%s', self.sig2n)
+        self._logger.debug('sig2n=%s', self.sig2n)
 
         self.ch2sig = {}
         for key in self.SIG_SYM.keys():
             self.ch2sig[self.SIG_SYM[key]] = self.sig2n[key]
-        self.logger.debug('ch2sig=%s', self.ch2sig)
+        self._logger.debug('ch2sig=%s', self.ch2sig)
 
         # 信号フォーマットのリスト<sig_format>から、
         # 文字列<sig_format_str>を生成
@@ -271,8 +272,8 @@ class IrAnalyze:
             self.sig_format_str = '??? '
         self.sig_format_str = self.sig_format_str.strip()
 
-        self.logger.debug('sig_format=%s', self.sig_format)
-        self.logger.debug('sig_format2=%s', self.sig_format2)
+        self._logger.debug('sig_format=%s', self.sig_format)
+        self._logger.debug('sig_format2=%s', self.sig_format2)
 
         # 信号リストを生成
         self.sig_list = []
@@ -280,14 +281,14 @@ class IrAnalyze:
             for key in self.sig2n.keys():
                 if [n1, n2] in self.sig2n[key]:
                     self.sig_list.append(key)
-        self.logger.debug('sig_list=%s', self.sig_list)
+        self._logger.debug('sig_list=%s', self.sig_list)
 
         # 信号リストを文字列に変換
         self.sig_str = ''
         for i, sig in enumerate(self.sig_list):
             ch = self.SIG_SYM[sig]
             self.sig_str += ch
-        self.logger.debug('sig_str=\'%s\'', self.sig_str)
+        self._logger.debug('sig_str=\'%s\'', self.sig_str)
 
         # 信号文字列の中をさらに分割(' 'を挿入)
         # 0,1の部分は分割しない
@@ -298,7 +299,7 @@ class IrAnalyze:
             self.sig_str = self.sig_str.replace(self.SIG_SYM[key],
                                                 ' ' + self.SIG_SYM[key] + ' ')
         self.sig_line = self.sig_str.split()
-        self.logger.debug('sig_line=%s', self.sig_line)
+        self._logger.debug('sig_line=%s', self.sig_line)
 
         # 2進数の桁数が偶数場合は16進数に変換
         # 2進数のままの場合は、先頭に IrConfix.HEADER_BIN を付加する
@@ -315,13 +316,13 @@ class IrAnalyze:
                     self.sig_line1.append(IrConfig.HEADER_BIN + sig)
             else:
                 self.sig_line1.append(sig)
-        self.logger.debug('sig_line1=%s', self.sig_line1)
+        self._logger.debug('sig_line1=%s', self.sig_line1)
 
         # 再び一つの文字列として連結
         self.sig_str2 = ''
         for s in self.sig_line1:
             self.sig_str2 += s
-        self.logger.debug('sig_str2=%s', self.sig_str2)
+        self._logger.debug('sig_str2=%s', self.sig_str2)
 
         # 同じ信号が繰り返されている場合は、下記のようなリストを作成
         #   [ '信号文字列', n ]
@@ -335,7 +336,7 @@ class IrAnalyze:
         if repeat_n > 1 and repeat_n == len(s_list):
             # 繰り返し
             sig_repeat = ['-' + s_list[0], repeat_n]
-            self.logger.debug('sig_repeat=%s', sig_repeat)
+            self._logger.debug('sig_repeat=%s', sig_repeat)
 
         # T.B.D.
         # エラーチェックなど
@@ -394,21 +395,21 @@ class IrAnalyze:
         json_str: str
 
         """
-        self.logger.debug('dev_list=%s', dev_list)
+        self._logger.debug('dev_list=%s', dev_list)
 
         if dev_list is None:
             if self.result is None:
-                self.logger.waring('no result')
+                self._logger.waring('no result')
                 return ''
 
             dev_list = [self.result]
-            self.logger.debug('dev_list=%s', dev_list)
+            self._logger.debug('dev_list=%s', dev_list)
 
         if type(dev_list) != list:
             dev_list = [dev_list]
 
         if dev_list == []:
-            self.logger.waring('no data')
+            self._logger.waring('no data')
             return ''
 
         json_str = '[\n'
@@ -453,7 +454,7 @@ class IrAnalyze:
 
         json_str = json_str[:-2] + ']\n'
 
-        self.logger.debug('json_str=\'%s\'', json_str)
+        self._logger.debug('json_str=\'%s\'', json_str)
         return json_str
 
 
@@ -473,17 +474,17 @@ class App:
     MSG_END = ''
 
     def __init__(self, pin, n=0, verbose=False, debug=False):
-        self.debug = debug
-        self.logger = get_logger(__class__.__name__, debug)
-        self.logger.debug('pin=%d, n=%d, verbose=%s', pin, n, verbose)
+        self._debug = debug
+        self._logger = get_logger(__class__.__name__, debug)
+        self._logger.debug('pin=%d, n=%d, verbose=%s', pin, n, verbose)
 
         self.pin     = pin
         self.n       = n
         self.verbose = verbose
 
-        self.analyzer = IrAnalyze(debug=self.debug)
+        self.analyzer = IrAnalyze(debug=self._debug)
         self.receiver = IrRecv(self.pin, verbose=self.verbose,
-                               debug=self.debug)
+                               debug=self._debug)
 
         self.msgq      = queue.Queue()
         self.th_worker = threading.Thread(target=self.worker)
@@ -500,11 +501,11 @@ class App:
 
         raw_data: [[pulse1, space1], [pulse2, space2], ..]
         """
-        self.logger.debug('')
+        self._logger.debug('')
 
         while True:
             raw_data = self.msgq.get()
-            self.logger.debug('raw_data=%s', raw_data)
+            self._logger.debug('raw_data=%s', raw_data)
             if raw_data == self.MSG_END:
                 break
 
@@ -515,7 +516,7 @@ class App:
                     f.write('space %d\n' % s)
 
             result = self.analyzer.analyze(raw_data)
-            self.logger.debug('result=%s', result)
+            self._logger.debug('result=%s', result)
             if result is None:
                 print('invalid signal .. ignored')
             else:
@@ -537,7 +538,7 @@ class App:
                     dump_data.append(result)
 
                 json_str = self.analyzer.json_dumps(dump_data)
-                self.logger.debug('json_str=%s', json_str)
+                self._logger.debug('json_str=%s', json_str)
 
                 with open(self.JSON_DUMP_FILE, 'w') as f:
                     f.write(json_str)
@@ -552,10 +553,10 @@ class App:
                     continue
 
                 if self.n > 0 and self.serial_num == self.n:
-                    self.logger.debug('serial_num=%d', self.serial_num)
+                    self._logger.debug('serial_num=%d', self.serial_num)
                     break
 
-        self.logger.debug('done')
+        self._logger.debug('done')
 
     def main(self):
         """
@@ -567,29 +568,29 @@ class App:
 
         実際の解析は <worker>スレッドに任せる。
         """
-        self.logger.debug('')
+        self._logger.debug('')
 
         count = 0
         while True:
             raw_data = self.receiver.recv()
-            self.logger.debug('raw_data=%s', raw_data)
+            self._logger.debug('raw_data=%s', raw_data)
             self.msgq.put(raw_data)
 
             count += 1
             if self.n > 0 and count == self.n:
-                self.logger.debug('count=%d/%d', count, self.n)
+                self._logger.debug('count=%d/%d', count, self.n)
                 break
 
     def end(self):
-        self.logger.debug('')
+        self._logger.debug('')
 
         if self.th_worker.is_alive():
             self.msgq.put(self.MSG_END)
-            self.logger.debug('join()')
+            self._logger.debug('join()')
             self.th_worker.join()
 
         self.receiver.end()
-        self.logger.debug('done')
+        self._logger.debug('done')
 
 
 #
@@ -600,6 +601,8 @@ DEF_PIN = 27
 
 import click
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+
+
 @click.command(context_settings=CONTEXT_SETTINGS,
                help='IR signal analyzer')
 @click.argument('pin', type=int, default=DEF_PIN)

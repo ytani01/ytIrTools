@@ -9,7 +9,7 @@ SERIAL_NUM_FILE="${HOME}/.dyson.serial"
 DEV_NAME="dyson_am05"
 SERIAL_MAX=3
 
-SEND_CMD="IrSend.py"
+SEND_CMD="ir-send"
 
 export PATH=${PATH}:${HOME}/bin
 
@@ -18,24 +18,13 @@ if [ ! -f ${SERIAL_NUM_FILE} ]; then
 fi
 SERIAL_NUM=`cat ${SERIAL_NUM_FILE}`
 
-while true; do
-    BUTTON_NAME=$1
-    
-    if [ X${BUTTON_NAME} != X ]; then
-	BUTTON_NAME="${BUTTON_NAME}${SERIAL_NUM}"
-	SERIAL_NUM=`expr ${SERIAL_NUM} + 1`
-	if [ ${SERIAL_NUM} -eq ${SERIAL_MAX} ]; then
-	    SERIAL_NUM="0"
-	fi
-	echo ${SERIAL_NUM} > ${SERIAL_NUM_FILE}
-    fi
+while [ X$1 != X ]; do
+    BUTTON_NAME=$1${SERIAL_NUM}
+
+    SERIAL_NUM=`expr \( ${SERIAL_NUM} + 1 \) % ${SERIAL_MAX}`
+    echo ${SERIAL_NUM} > ${SERIAL_NUM_FILE}
 
     ${SEND_CMD} ${DEV_NAME} ${BUTTON_NAME}
 
-    if [ X$1 != X ]; then
-	shift
-    fi
-    if [ X$1 = X ]; then
-	break
-    fi
+    shift
 done

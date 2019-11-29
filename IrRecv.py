@@ -45,9 +45,9 @@ class IrRecv:
         verbose: bool
         debug: bool
         """
-        self.debug = debug
-        self.logger = get_logger(__class__.__name__, self.debug)
-        self.logger.debug('pin=%d, glitch_usec=%d', pin, glitch_usec)
+        self._debug = debug
+        self._logger = get_logger(__class__.__name__, self._debug)
+        self._logger.debug('pin=%d, glitch_usec=%d', pin, glitch_usec)
 
         self.pin = pin
         self.tick = 0
@@ -71,7 +71,7 @@ class IrRecv:
         ms: int
           msec
         """
-        self.logger.debug('ms=%d', ms)
+        self._logger.debug('ms=%d', ms)
         self.pi.set_watchdog(self.pin, ms)
 
     def cb_func_recv(self, pin, val, tick):
@@ -84,10 +84,10 @@ class IrRecv:
         最小限の処理にとどめて、ほとんどの処理はサブスレッドに任せる。
 
         """
-        self.logger.debug('pin=%d, val=%d, tick=%d', pin, val, tick)
+        self._logger.debug('pin=%d, val=%d, tick=%d', pin, val, tick)
 
         if not self.receiving:
-            self.logger.debug('reciving=%s .. ignore', self.receiving)
+            self._logger.debug('reciving=%s .. ignore', self.receiving)
             return
 
         self.msgq.put([pin, val, tick])
@@ -100,7 +100,7 @@ class IrRecv:
 
             self.msgq.put(self.MSG_END)
 
-            self.logger.debug('timeout!')
+            self._logger.debug('timeout!')
             return
 
         self.set_watchdog(self.WATCHDOG_MSEC)
@@ -113,17 +113,17 @@ class IrRecv:
         実際の処理は``proc_msg()``で行う。
 
         """
-        self.logger.debug('')
+        self._logger.debug('')
 
         while True:
             msg = self.msgq.get()
-            self.logger.debug('msg=%s', msg)
+            self._logger.debug('msg=%s', msg)
             if msg == self.MSG_END:
                 break
 
             self.proc_msg(msg)
 
-        self.logger.debug('done')
+        self._logger.debug('done')
 
     def proc_msg(self, msg):
         """
@@ -138,37 +138,37 @@ class IrRecv:
           GPIOピンの状態変化
 
         """
-        self.logger.debug('msg=%s', msg)
+        self._logger.debug('msg=%s', msg)
 
         if type(msg) != list:
-            self.logger.waring('invalid msg:%s .. ignored', msg)
+            self._logger.waring('invalid msg:%s .. ignored', msg)
             return
         if len(msg) != 3:
-            self.logger.waring('invalid msg:%s .. ignored', msg)
+            self._logger.waring('invalid msg:%s .. ignored', msg)
             return
 
         [pin, val, tick] = msg
 
         interval = tick - self.tick
-        self.logger.debug('interval=%d', interval)
+        self._logger.debug('interval=%d', interval)
         self.tick = tick
 
         if val == pigpio.TIMEOUT:
-            self.logger.debug('timeout!')
+            self._logger.debug('timeout!')
             if len(self.raw_data) > 0:
                 if len(self.raw_data[-1]) == 1:
                     self.raw_data[-1].append(interval)
-            self.logger.debug('end')
+            self._logger.debug('end')
             return
 
         if interval > self.INTERVAL_MAX:
             interval = self.INTERVAL_MAX
-            self.logger.debug('interval=%d', interval)
+            self._logger.debug('interval=%d', interval)
 
         if val == IrRecv.VAL_ON:
             # end of space
             if self.raw_data == []:
-                self.logger.debug('start raw_data')
+                self._logger.debug('start raw_data')
                 return
             else:
                 self.raw_data[-1].append(interval)
@@ -177,13 +177,13 @@ class IrRecv:
             # end of pulse
             if self.raw_data == [] and interval < self.LEADER_MIN_USEC:
                 self.set_watchdog(self.WATCHDOG_CANCEL)
-                self.logger.debug('%d: leader is too short .. ignored',
+                self._logger.debug('%d: leader is too short .. ignored',
                                   interval)
                 return
             else:
                 self.raw_data.append([interval])
 
-        self.logger.debug('raw_data=%s', self.raw_data)
+        self._logger.debug('raw_data=%s', self.raw_data)
 
     def recv(self):
         """
@@ -193,7 +193,7 @@ class IrRecv:
         サブスレッドが終了するまで待つ。
 
         """
-        self.logger.debug('')
+        self._logger.debug('')
 
         self.raw_data  = []
         self.receiving = True
@@ -227,16 +227,16 @@ class IrRecv:
         コールバックをキャンセルし、
         ``worker``スレッドがaliveの場合は、終了メッセージを送り、終了を待つ。
         """
-        self.logger.debug('')
+        self._logger.debug('')
         self.cb_recv.cancel()
         self.pi.stop()
 
         if self.th_worker.is_alive():
             self.msgq.put(self.MSG_END)
-            self.logger.debug('join()')
+            self._logger.debug('join()')
             self.th_worker.join()
 
-        self.logger.debug('done')
+        self._logger.debug('done')
 
     def raw2pulse_space(self, raw_data=None):
         """
@@ -256,11 +256,11 @@ class IrRecv:
           space s2
           :
         """
-        self.logger.debug('row_data=%s', raw_data)
+        self._logger.debug('row_data=%s', raw_data)
 
         if raw_data is None:
             raw_data = self.raw_data
-            self.logger.debug('raw_data=%s', raw_data)
+            self._logger.debug('raw_data=%s', raw_data)
 
         pulse_space = ''
 
@@ -286,11 +286,11 @@ class IrRecv:
           [[p1, s1], [p2, s2], .. ]
 
         """
-        self.logger.debug('raw_data=%s', raw_data)
+        self._logger.debug('raw_data=%s', raw_data)
 
         if raw_data is None:
             raw_data = self.raw_data
-            self.logger.debug('raw_data=%s', raw_data)
+            self._logger.debug('raw_data=%s', raw_data)
 
         print(self.raw2pulse_space(raw_data), end='')
 
@@ -298,14 +298,14 @@ class IrRecv:
 #####
 class App:
     def __init__(self, pin, debug=False):
-        self.debug = debug
-        self.logger = get_logger(__class__.__name__, self.debug)
-        self.logger.debug('pin=%d', pin)
+        self._debug = debug
+        self._logger = get_logger(__class__.__name__, self._debug)
+        self._logger.debug('pin=%d', pin)
 
-        self.r = IrRecv(pin, verbose=True, debug=self.debug)
+        self.r = IrRecv(pin, verbose=True, debug=self._debug)
 
     def main(self):
-        self.logger.debug('')
+        self._logger.debug('')
 
         while True:
             print('# -')
@@ -315,7 +315,7 @@ class App:
             time.sleep(.5)
 
     def end(self):
-        self.logger.debug('')
+        self._logger.debug('')
         self.r.end()
 
 
@@ -324,6 +324,8 @@ DEF_PIN = 27
 
 import click
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
+
+
 @click.command(context_settings=CONTEXT_SETTINGS,
                help='IR signal receiver')
 @click.argument('pin', type=int, default=DEF_PIN)
