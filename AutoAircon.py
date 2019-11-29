@@ -119,7 +119,7 @@ class Aircon:
         self._logger.debug('cmd_str=%s', cmd_str)
 
         try:
-            ret = self._irsend.send_recv(cmd_str)
+            ret = self._irsend.send_recv(cmd_str.split())
             self._logger.debug('ret=%a', ret)
         except Exception as e:
             self._logger.error('%s:%s.', type(e), e)
