@@ -60,13 +60,16 @@ class IrSendCmd(Cmd):
             msg = '%s %s' % (type(e), e)
             self._logger.error(msg)
             return self.RC_NG, msg
+
         if not ret:
             return self.RC_NG, None
         return self.RC_OK, None
 
 
 class IrSendCmdServerApp(CmdServerApp):
-    def __init__(self, port, gpio, debug=False):
+    DEF_PORT = 12352
+
+    def __init__(self, port=DEF_PORT, gpio=IrSend.DEF_PIN, debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
         self._logger.debug('port=%s, gpio=%s', port, gpio)
@@ -86,6 +89,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.command(context_settings=CONTEXT_SETTINGS,
                help='TCP Server Template')
 @click.option('--port', '-p', 'port', type=int,
+              default=IrSendCmdServerApp.DEF_PORT,
               help='port number')
 @click.option('--gpio', '-g', 'gpio', type=int, default=IrSend.DEF_PIN,
               help='GPIO pin number')

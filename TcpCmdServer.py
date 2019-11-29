@@ -8,13 +8,25 @@ TcpCmdServer -- サーバープログラムのベース
 クライアントからの要求(コマンド文字列)を受け取り、
 対応するコマンド(関数)を実行する。
 
-コマンドには、
+* コマンド: 文字列(スペース区切り)
+
+    "コマンド名 param1 param2 .."
+
+* リプライ: JSON文字列
+
+    {
+      "rc": Cmd.RC_*,
+      "msg": 任意のメッセージ
+    }
+
+
+各コマンドには、
 CmdServerHandler で即時に実行される関数(FUNC_I)と、
 キューイングされて、CmdServerApp で順に実行される関数(FUNC_Q)を
 登録できる。
 
-FAUNC_I は、複数クライアントからの要求が並列実行される(マルチスレッド)。
-FAUNC_Q は、並列実行されず、必ず順に一つずつ実行される(シングルスレッド)。
+FAUNC_I: 複数クライアントからの要求が並列実行される(マルチスレッド)。
+FAUNC_Q: 並列実行されず、必ず順に一つずつ実行される(シングルスレッド)。
 
 
 main()
@@ -355,15 +367,13 @@ class CmdServer(socketserver.ThreadingTCPServer):
     """
     override 不要
     """
-    DEF_PORT = 12399
-
-    def __init__(self, app, port=DEF_PORT, debug=False):
+    def __init__(self, app, port, debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
         self._logger.debug('port=%s', port)
 
         self._app = app
-        self._port = port or self.DEF_PORT
+        self._port = port
 
         self._active = False
         self.allow_reuse_address = True  # Important !!
@@ -411,12 +421,14 @@ class CmdServerApp:
     最初に super().__init__()を呼び出す。
     self._cmdに Cmdクラスのサブクラスを設定する。
     """
+    DEF_PORT = 12399
+
     RC_OK = 'OK'
     RC_NG = 'NG'
 
     SHUTDOWN_CMD = 'shutdown9999'
 
-    def __init__(self, port, debug=False):
+    def __init__(self, port=DEF_PORT, debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
         self._logger.debug('port=%s', port)
@@ -485,8 +497,8 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
 @click.command(context_settings=CONTEXT_SETTINGS,
-               help='TCP Server Template')
-@click.option('--port', 'port', type=int,
+               help='TCP Server base class')
+@click.option('--port', 'port', type=int, default=CmdServerApp.DEF_PORT,
               help='port number')
 @click.option('--debug', '-d', 'debug', is_flag=True, default=False,
               help='debug flag')
