@@ -32,7 +32,7 @@ __author__ = 'Yoichi Tanibayashi'
 __date__   = '2019'
 
 
-from IrSendClient import IrSendClient
+from IrSendCmdClient import IrSendCmdClient
 from ytBeebotte import Beebotte
 import threading
 import queue
@@ -109,7 +109,8 @@ class Aircon:
         self._pin = pin
 
         # self._irsend = IrSend(self._pin, load_conf=True, debug=self._debug)
-        self._irsend = IrSendClient('localhost', debug=False)
+        # self._irsend = IrSendClient('localhost', debug=False)
+        self._irsend = IrSendCmdClient('localhost', debug=self._debug)
 
     def irsend(self, button):
         self._logger.debug('button=%s', button)
@@ -118,9 +119,12 @@ class Aircon:
         self._logger.debug('cmd_str=%s', cmd_str)
 
         try:
-            self._irsend.send_recv(cmd_str)
+            ret = self._irsend.send_recv(cmd_str)
+            self._logger.debug('ret=%a', ret)
         except Exception as e:
             self._logger.error('%s:%s.', type(e), e)
+        else:
+            self._logger.info('%s:%s', cmd_str, self._irsend.reply2str(ret))
 
     def irsend_temp(self, temp):
         self._logger.debug('temp=%d', temp)

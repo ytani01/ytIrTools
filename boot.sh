@@ -13,7 +13,7 @@ ts_echo () {
 ts_echo "> ${MYNAME}: start"
 
 NAME_PIGPIOD="pigpiod"
-NAME_IRSENDSERVER="IrSendServer"
+NAME_IRSENDSERVER="IrSendCmdServer"
 NAME_AUTOAIRCON="AutoAircon"
 
 LOGDIR=${HOME}/tmp
@@ -37,14 +37,14 @@ done
 
 if [ X$PID_IRSENDSERVER = X ]; then
     mv -f ${LOG_IRSENDSERVER} ${LOG_IRSENDSERVER}.1
-    ts_echo "start IrSendServer"
-    ${HOME}/bin/IrSendServer.py > ${LOG_IRSENDSERVER} 2>&1 &
+    ts_echo "start ${NAME_IRSENDSERVER}"
+    ${HOME}/bin/${NAME_IRSENDSERVER}.py > ${LOG_IRSENDSERVER} 2>&1 &
 fi
 
 if [ X$PID_AUTOAIRCON = X ]; then
     mv -f ${LOG_AUTOAIRCON} ${LOG_AUTOAIRCON}.1
-    ts_echo "start AutoAircon"
-    ${HOME}/bin/AutoAircon.py > ${LOG_AUTOAIRCON} 2>&1 &
+    ts_echo "start ${NAME_AUTOAIRCON}"
+    ${HOME}/bin/${NAME_AUTOAIRCON}.py > ${LOG_AUTOAIRCON} 2>&1 &
 fi
 
 ts_echo "< ${MYNAME}: end"

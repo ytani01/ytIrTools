@@ -8,18 +8,17 @@ TcpCmdServer -- サーバープログラムのベース
 クライアントからの要求(コマンド文字列)を受け取り、
 対応するコマンド(関数)を実行する。
 
-* コマンド: 文字列(スペース区切り)
+* コマンド文字列: コマンド名とパラメータ (スペース区切り)
 
     "コマンド名 param1 param2 .."
 
+* コマンドとパラメータは、関数に渡される前にリストに分解される。
+
 * リプライ: JSON文字列
 
-    {
-      "rc": Cmd.RC_*,
-      "msg": 任意のメッセージ
-    }
+    '{"rc": Cmd.RC_*, "msg": 任意のメッセージ}'
 
-
+------------
 各コマンドには、
 CmdServerHandler で即時に実行される関数(FUNC_I)と、
 キューイングされて、CmdServerApp で順に実行される関数(FUNC_Q)を
@@ -29,6 +28,8 @@ FAUNC_I: 複数クライアントからの要求が並列実行される(マル�
 FAUNC_Q: 並列実行されず、必ず順に一つずつ実行される(シングルスレッド)。
 
 
+呼び出し関係
+------------
 main()
   |
   +- CmdServerApp
@@ -64,6 +65,8 @@ class Cmd:
         return rc, msg
 
     """
+    DEF_PORT = 12399
+
     RC_OK = 'OK'  # OK .. FUNC_I の場合は、キューイング不要
     RC_NG = 'NG'  # NG
     RC_CONT = 'CONTINUE'  # FUNC_I 正常終了 .. キューイングして結果を待つ
@@ -73,10 +76,10 @@ class Cmd:
     FUNC_Q = 'func_q'
     HELP_STR = 'help'
 
-    def __init__(self, debug=False):
+    def __init__(self, param=None, debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
-        self._logger.debug('')
+        self._logger.debug('param=%s', param)
 
         self.add_cmd('sleep', self.cmd_i_sleep, self.cmd_q_sleep, 'sleep')
         self.add_cmd('help', self.cmd_i_help, None, 'command help')
@@ -100,6 +103,9 @@ class Cmd:
         }
 
     def cmd_i_help(self, args):
+        """
+        コマンド一覧
+        """
         self._logger.debug('args=%a', args)
 
         if len(args) >= 2:
@@ -121,6 +127,12 @@ class Cmd:
         return rc, msg
 
     def cmd_i_sleep(self, args):
+        """
+        サーバーをスリープさせる。
+        クライアントも待たされる。
+
+        ここでは、引数の事前チェックのみ。
+        """
         self._logger.debug('args=%a', args)
 
         try:
@@ -135,6 +147,13 @@ class Cmd:
         return rc, msg
 
     def cmd_q_sleep(self, args):
+        """
+        サーバーをさせる。
+        クライアントも待たされる。
+
+        事前チェックされたパラメータ(秒数)受け取り、
+        実際にスリープする。
+        """
         self._logger.debug('args=%a', args)
 
         rc = self.RC_OK
@@ -147,7 +166,18 @@ class Cmd:
         return rc, msg
 
     def cmd_i_shutdown(self, args):
+        """
+        指定された秒数後にサーバープロセスをシャットダウン。
+        クライアントは、待たずに完了。
+
+        ここでは、パラメータの事前チェックを行い。
+        受理 (ACCEPT) する。
+
+        """
         self._logger.debug('args=%a', args)
+
+        if len(args) == 1:
+            return self.RC_ACCEPT, 'sleep_sec=0'
 
         try:
             sleep_sec = float(args[1])
@@ -161,11 +191,23 @@ class Cmd:
         return rc, msg
 
     def cmd_q_shutdown(self, args):
+        """
+        指定された秒数後にサーバープロセスをシャットダウン。
+        クライアントは、待たずに完了。
+
+        指定された秒数スリープし、OK を返すだけ。
+
+        メインルーチン (CmdServerApp:main)で、
+        コマンド名をキーに判断され、シャットダウン処理が実行される。
+        """
         self._logger.debug('args=%a', args)
 
         rc = self.RC_OK
 
-        sleep_sec = float(args[1])
+        if len(args) == 1:
+            sleep_sec = 0
+        else:
+            sleep_sec = float(args[1])
 
         msg = '%s: sleep_sec=%s' % (args[0], sleep_sec)
         self._logger.debug(msg)
@@ -421,21 +463,17 @@ class CmdServerApp:
     最初に super().__init__()を呼び出す。
     self._cmdに Cmdクラスのサブクラスを設定する。
     """
-    DEF_PORT = 12399
-
-    RC_OK = 'OK'
-    RC_NG = 'NG'
-
     SHUTDOWN_CMD = 'shutdown9999'
 
-    def __init__(self, port=DEF_PORT, debug=False):
+    def __init__(self, cmd_class, param=None, port=Cmd.DEF_PORT, debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
-        self._logger.debug('port=%s', port)
+        self._logger.debug('cmd_class=%s, param=%s, port=%s',
+                           cmd_class, param, port)
 
         self._cmdq = queue.Queue()
 
-        self._cmd = Cmd(debug=self._debug)
+        self._cmd = cmd_class(param, debug=self._debug)
 
         self._svr = CmdServer(self, port, self._debug)
         self._svr_th = threading.Thread(target=self._svr.serve_forever,
@@ -487,7 +525,9 @@ class CmdServerApp:
         self._logger.debug('')
         while not self._cmdq.empty():
             args, repq = self._cmdq.get()
-            repq.put((Cmd.RC_NG, 'terminated'))
+            self._logger.debug('args=%s, repq=%s', args, repq)
+            if repq is not None:
+                repq.put((Cmd.RC_NG, 'terminated'))
         self._svr.end()
         self._logger.debug('done')
 
@@ -498,7 +538,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 @click.command(context_settings=CONTEXT_SETTINGS,
                help='TCP Server base class')
-@click.option('--port', 'port', type=int, default=CmdServerApp.DEF_PORT,
+@click.option('--port', 'port', type=int, default=Cmd.DEF_PORT,
               help='port number')
 @click.option('--debug', '-d', 'debug', is_flag=True, default=False,
               help='debug flag')
@@ -508,7 +548,7 @@ def main(port, debug):
 
     logger.info('start')
 
-    app = CmdServerApp(port, debug=debug)
+    app = CmdServerApp(Cmd, port=port, debug=debug)
     try:
         app.main()
     finally:

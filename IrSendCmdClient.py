@@ -9,7 +9,7 @@ __author__ = 'Yoichi Tanibayashi'
 __date__   = '2019'
 
 from TcpCmdClient import TcpCmdClient, TcpCmdClientApp
-from IrSendServer import IrSendServer
+from IrSendCmdServer import IrSendCmd
 import json
 
 from MyLogger import get_logger
@@ -17,26 +17,22 @@ from MyLogger import get_logger
 
 class IrSendCmdClient(TcpCmdClient):
     DEF_SVR_HOST = 'localhost'
-    DEF_SVR_PORT = IrSendServer.DEF_PORT
+    DEF_SVR_PORT = IrSendCmd.DEF_PORT
 
-    DEF_TIMEOUT = 0.5  # sec
-
-    CMD_NAME = 'irsend'
+    CMD_NAME = IrSendCmd.CMD_NAME
 
     def __init__(self, host=DEF_SVR_HOST, port=DEF_SVR_PORT, debug=False):
-        self._debug = debug
-        self._logger = get_logger(__class__.__name__, self._debug)
-        self._logger.debug('host=%s, port=%s', host, port)
-
+        """
+        サーバーホスト、サーバーポートのデフォルト値を変えるためだけの定義
+        """
         super().__init__(host, port, debug=debug)
 
-    def send_recv(self, args_str, timeout=DEF_TIMEOUT, newline=False):
-        self._logger.debug('args_str=%a, timeout=%s, newline=%s',
-                           args_str, timeout, newline)
+    def send_recv(self, args_str):
+        self._logger.debug('args_str=%a', args_str)
 
         args_str = self.CMD_NAME + ' ' + args_str
 
-        return super().send_recv(args_str, timeout, newline)
+        return super().send_recv(args_str)
 
     def reply2str(self, rep_str):
         self._logger.debug('rep_str=%a', rep_str)
@@ -65,7 +61,7 @@ class IrSendCmdClient(TcpCmdClient):
         msg = ret['msg']
 
         if type(msg) == str:
-            return 'ERROR: ' + msg
+            return '%s: %s' % (rc, msg)
 
         if type(msg) == list:
             # device list

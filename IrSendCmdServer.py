@@ -16,26 +16,59 @@ from MyLogger import get_logger
 
 
 class IrSendCmd(Cmd):
-    def __init__(self, gpio=IrSend.DEF_PIN, debug=False):
+    """
+    赤外線リモコン信号送信コマンドの定義
+    """
+    DEF_PORT = 12353
+
+    CMD_NAME = 'irsend'
+
+    SUBCMD = {'LOAD': '@load'}
+
+    def __init__(self, param=(IrSend.DEF_PIN,), debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
-        self._logger.debug('gpio=%a', gpio)
+        self._logger.debug('param=%s', param)
 
         # コマンド追加
-        self.add_cmd('irsend', None, self.cmd_q_irsend, 'send IR signal')
+        self.add_cmd(self.CMD_NAME, None, self.cmd_q_irsend, 'send IR signal')
 
         # サーバー独自の設定
+        gpio = param[0]
         self._irsend = IrSend(gpio, load_conf=True, debug=False)
 
         # 最後に super()__init__()
         super().__init__(debug=self._debug)
 
     def cmd_q_irsend(self, args):
+        """
+        args[0]: self.CMD_NAME
+
+        引数無し: デバイス一覧
+
+        引数1個
+          "@load":    設定ファイル再読込
+          デバイス名: ボタン一覧
+
+        引数2個: 赤外線リモコン信号送信
+
+        """
         self._logger.debug('args=%a', args)
 
         if len(args) == 1:
             ret = self._irsend.get_dev_list()
             return self.RC_OK, ret
+
+        #
+        # len(args) >= 2
+        #
+        if args[1].startswith('@'):
+            if args[1] == self.SUBCMD['LOAD']:
+                self._irsend.reload_conf()
+                self._logger.debug('%s', self._irsend.irconf.data)
+                return self.RC_OK, 'reload config data'
+            else:
+                return self.RC_NG, '%s: no such command' % args[1]
 
         m_and_b = self._irsend.get_macro_and_button(args[1])
         if m_and_b is None:
@@ -46,13 +79,13 @@ class IrSendCmd(Cmd):
         if len(args) == 2:
             return self.RC_OK, m_and_b
 
+        #
+        # len(args) >= 3
+        #
         if args[2] not in m_and_b['buttons']:
             msg = '%s:%s: no such button' % (args[1], args[2])
             self._logger.error(msg)
             return self.RC_NG, msg
-
-        if len(args) < 3:
-            return self.RC_OK, None
 
         try:
             ret = self._irsend.send(args[1], args[2])
@@ -66,21 +99,6 @@ class IrSendCmd(Cmd):
         return self.RC_OK, None
 
 
-class IrSendCmdServerApp(CmdServerApp):
-    DEF_PORT = 12352
-
-    def __init__(self, port=DEF_PORT, gpio=IrSend.DEF_PIN, debug=False):
-        self._debug = debug
-        self._logger = get_logger(__class__.__name__, self._debug)
-        self._logger.debug('port=%s, gpio=%s', port, gpio)
-
-        # 最初に super().__init__()
-        super().__init__(port, debug=self._debug)
-
-        # super().__init__()の後
-        self._cmd = IrSendCmd(gpio, debug=self._debug)
-
-
 #####
 import click
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -89,7 +107,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.command(context_settings=CONTEXT_SETTINGS,
                help='TCP Server Template')
 @click.option('--port', '-p', 'port', type=int,
-              default=IrSendCmdServerApp.DEF_PORT,
+              default=IrSendCmd.DEF_PORT,
               help='port number')
 @click.option('--gpio', '-g', 'gpio', type=int, default=IrSend.DEF_PIN,
               help='GPIO pin number')
@@ -101,7 +119,7 @@ def main(port, gpio, debug):
 
     logger.info('start')
 
-    app = IrSendCmdServerApp(port, gpio, debug=debug)
+    app = CmdServerApp(IrSendCmd, param=(gpio,), port=port, debug=debug)
     try:
         app.main()
     finally:

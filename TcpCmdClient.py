@@ -37,6 +37,9 @@ class TcpCmdClient:
         self._logger.debug('')
 
     def send_recv(self, args_str, timeout=DEF_TIMEOUT, newline=False):
+        """
+        注意：timeout を小さくしすぎると、返信を受信できない。
+        """
         self._logger.debug('args_str=%a, timeout=%s, newline=%s',
                            args_str, timeout, newline)
 
