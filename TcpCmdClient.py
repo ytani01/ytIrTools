@@ -36,10 +36,19 @@ class TcpCmdClient:
     def end(self):
         self._logger.debug('')
 
-    def send_recv(self, args_str, timeout=DEF_TIMEOUT, newline=False):
+    def send_recv(self, args, timeout=DEF_TIMEOUT, newline=False):
         """
+        override対象
+
         注意：timeout を小さくしすぎると、返信を受信できない。
         """
+        self._logger.debug('args=%s, timeout=%s, newline=%s',
+                           args, timeout, newline)
+
+        args_str = ' '.join(list(args))
+        return self.send_recv_str(args_str, timeout=timeout, newline=newline)
+
+    def send_recv_str(self, args_str, timeout=DEF_TIMEOUT, newline=False):
         self._logger.debug('args_str=%a, timeout=%s, newline=%s',
                            args_str, timeout, newline)
 
@@ -109,19 +118,16 @@ class TcpCmdClientApp:
                            args, host, port)
         self._logger.debug('timeout=%s, newline=%s', timeout, newline)
 
-        self._args_str = ' '.join(list(args))
-        self._logger.debug('args_str=%s', self._args_str)
+        self._args = args
+        self._cl = client_class(host, port, debug=self._debug)
 
         self._timeout = timeout
         self._newline = newline
 
-        self._cl = client_class(host, port, debug=self._debug)
-
     def main(self):
         self._logger.debug('')
 
-        rep_str = self._cl.send_recv(self._args_str,
-                                     self._timeout, self._newline)
+        rep_str = self._cl.send_recv(self._args, self._timeout, self._newline)
         self._logger.debug('rep_str=%a', rep_str)
 
         print(self._cl.reply2str(rep_str))

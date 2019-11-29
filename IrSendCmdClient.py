@@ -27,12 +27,32 @@ class IrSendCmdClient(TcpCmdClient):
         """
         super().__init__(host, port, debug=debug)
 
-    def send_recv(self, args_str, timeout=TcpCmdClient.DEF_TIMEOUT, newline=False):
-        self._logger.debug('args_str=%a', args_str)
+    def send_recv(self, args,
+                  timeout=TcpCmdClient.DEF_TIMEOUT, newline=False):
+        """
+        ボタンを複数指定可能: どれかが NG だと、最後の NGを返す。
+        """
+        self._logger.debug('args=%a', args)
 
-        args_str = self.CMD_NAME + ' ' + args_str
+        args = [self.CMD_NAME] + list(args)
 
-        return super().send_recv(args_str)
+        if len(args) <= 2:
+            # [CMD_NAME] or [CMD_NAME, dev]
+            return super().send_recv(args, timeout=timeout, newline=newline)
+
+        #
+        # len(args) > 2: [CMD_NAME, dev, btn1, .. ]
+        #
+        ret = json.dumps({'rc': IrSendCmd.RC_OK})
+        for b in args[2:]:
+            ret1 = super().send_recv(args[:2] + [b],
+                                     timeout=timeout, newline=newline)
+            self._logger.debug('ret1=%a', ret1)
+            if json.loads(ret1)['rc'] != IrSendCmd.RC_OK:
+                ret = ret1
+                self._logger.debug('ret1=%s', ret1)
+
+        return ret
 
     def reply2str(self, rep_str):
         self._logger.debug('rep_str=%a', rep_str)
