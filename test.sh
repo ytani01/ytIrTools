@@ -4,9 +4,10 @@ COUNT=$1
 
 while [ $COUNT -gt 0 ]; do
     echo $COUNT
-    ./TcpCmdClient.py -s 192.168.0.220 -p 12399 -t .1 irsend tvlight &
+#    ./TcpCmdClient.py -s 192.168.0.220 -p 12399 -t .1 irsend tvlight &
 #    sleep 1
-    ./TcpCmdClient.py -s 192.168.0.220 -p 12399 -t .5 irsend tvlight power &
+#    ./TcpCmdClient.py -s 192.168.0.220 -p 12399 -t .5 irsend tvlight power &
+    ir-send -s 192.168.0.220 -p 12353 tvlight power &
 #    sleep 1
     COUNT=`expr $COUNT - 1`
 done

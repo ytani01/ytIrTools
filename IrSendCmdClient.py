@@ -48,9 +48,12 @@ class IrSendCmdClient(TcpCmdClient):
             ret1 = super().send_recv(args[:2] + [b],
                                      timeout=timeout, newline=newline)
             self._logger.debug('ret1=%a', ret1)
-            if json.loads(ret1)['rc'] != IrSendCmd.RC_OK:
-                ret = ret1
-                self._logger.debug('ret1=%s', ret1)
+            try:
+                if json.loads(ret1)['rc'] != IrSendCmd.RC_OK:
+                    ret = ret1
+                    self._logger.debug('ret1=%s', ret1)
+            except Exception as e:
+                self._logger.warning('ret1=%a, %s: %s', ret1, type(e), e)
 
         return ret
 

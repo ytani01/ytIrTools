@@ -21,7 +21,7 @@ class TcpCmdClient:
     DEF_SVR_HOST = 'localhost'
     DEF_SVR_PORT = 12352
 
-    DEF_TIMEOUT = 2.5  # sec
+    DEF_TIMEOUT = 20  # sec
 
     EOF = b'\04'
 
@@ -73,10 +73,11 @@ class TcpCmdClient:
                 in_data = b''
                 try:
                     in_data = tn.read_until(self.EOF, timeout=timeout)
-                    self._logger.debug('in_data=%a', in_data)
                 except Exception as e:
                     self._logger.warning('%s: %s.', type(e), e)
                     break
+                else:
+                    self._logger.debug('in_data=%a', in_data)
 
                 if in_data == b'':
                     break
@@ -88,6 +89,9 @@ class TcpCmdClient:
                     rep = rep[:-1]
                     break
 
+        if len(rep) == 0:
+            rep = b'{"rc": "NG", "msg": "timeout"}'
+            
         rep_str = rep.decode('utf-8').strip()
         self._logger.debug('rep_str=%a', rep_str)
         return rep_str

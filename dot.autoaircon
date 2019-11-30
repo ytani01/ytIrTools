@@ -10,7 +10,7 @@ topic = env1/temp
 topic = aircon1/param
 kp = 3.5
 ki = 0.03
-kd = 250
+kd = 350
 ki_i_max = 5.0
 
 [server]
