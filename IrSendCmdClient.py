@@ -30,6 +30,8 @@ class IrSendCmdClient(TcpCmdClient):
     def send_recv(self, args,
                   timeout=TcpCmdClient.DEF_TIMEOUT, newline=False):
         """
+        args := [dev_name, button_name]
+
         ボタンを複数指定可能: どれかが NG だと、最後の NGを返す。
         """
         self._logger.debug('args=%a', args)

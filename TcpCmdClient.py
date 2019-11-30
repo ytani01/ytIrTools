@@ -40,7 +40,7 @@ class TcpCmdClient:
         """
         override対象
 
-        注意：timeout を小さくしすぎると、返信を受信できない。
+        timeout=0: 返信を受信しない
         """
         self._logger.debug('args=%s, timeout=%s, newline=%s',
                            args, timeout, newline)
@@ -49,6 +49,9 @@ class TcpCmdClient:
         return self.send_recv_str(args_str, timeout=timeout, newline=newline)
 
     def send_recv_str(self, args_str, timeout=DEF_TIMEOUT, newline=False):
+        """
+        timeout=0: 返信を受信しない
+        """
         self._logger.debug('args_str=%a, timeout=%s, newline=%s',
                            args_str, timeout, newline)
 
@@ -68,26 +71,29 @@ class TcpCmdClient:
 
             tn.write(out_data)
 
-            rep = b''
-            while True:
-                in_data = b''
-                try:
-                    in_data = tn.read_until(self.EOF, timeout=timeout)
-                except Exception as e:
-                    self._logger.warning('%s: %s.', type(e), e)
-                    break
-                else:
-                    self._logger.debug('in_data=%a', in_data)
+            if timeout == 0:
+                rep = b'{"rc": "OK", "msg": "don\'t wait"}'
+            else:
+                rep = b''
+                while True:
+                    in_data = b''
+                    try:
+                        in_data = tn.read_until(self.EOF, timeout=timeout)
+                    except Exception as e:
+                        self._logger.warning('%s: %s.', type(e), e)
+                        break
+                    else:
+                        self._logger.debug('in_data=%a', in_data)
 
-                if in_data == b'':
-                    break
+                    if in_data == b'':
+                        break
 
-                rep += in_data
-                self._logger.debug('rep=%a', rep)
-                if self.EOF in rep:
-                    self._logger.debug('EOF')
-                    rep = rep[:-1]
-                    break
+                    rep += in_data
+                    self._logger.debug('rep=%a', rep)
+                    if self.EOF in rep:
+                        self._logger.debug('EOF')
+                        rep = rep[:-1]
+                        break
 
         if len(rep) == 0:
             rep = b'{"rc": "NG", "msg": "timeout"}'

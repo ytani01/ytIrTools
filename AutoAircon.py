@@ -15,7 +15,7 @@ App
         Beebotte
           Mqtt
       Aircon
-        IrSend
+        IrSendCmdClient
       AutoAirconStat
         Beebotte
           Mqtt
@@ -115,16 +115,16 @@ class Aircon:
     def irsend(self, button):
         self._logger.debug('button=%s', button)
 
-        cmd_str = '%s %s' % (self._dev, button)
-        self._logger.debug('cmd_str=%s', cmd_str)
+        cmd_args = [self._dev, button]
+        self._logger.debug('cmd_args=%s', cmd_args)
 
         try:
-            ret = self._irsend.send_recv(cmd_str.split())
+            ret = self._irsend.send_recv(cmd_args)
             self._logger.debug('ret=%a', ret)
         except Exception as e:
             self._logger.error('%s:%s.', type(e), e)
         else:
-            self._logger.info('%s:%s', cmd_str, self._irsend.reply2str(ret))
+            self._logger.info('%s:%s', cmd_args, self._irsend.reply2str(ret))
 
     def irsend_temp(self, temp):
         self._logger.debug('temp=%d', temp)
@@ -218,25 +218,26 @@ class AutoAircon(threading.Thread):
     def run(self):
         self._logger.debug('')
 
-        self._stat.publish_param({'kp': self._kp,
-                                  'ki': self._ki,
-                                  'kd': self._kd})
-
         self._temp.start()
 
         while self._loop:
             ts, temp = self._temp.get_temp()
             self._logger.info('ts=%.3f, temp=%s', ts, temp)
+
             if ts == 0:
                 self._logger.debug('ts=%d', ts)
                 break
             if temp == self._temp.TEMP_END:
                 self._logger.debug('temp=TEMP_END')
                 break
+
             self._stat.publish_param({'active': self._ir_active,
                                       'temp': temp,
                                       'ttemp': self._target_temp,
-                                      'rtemp': self._remocon_temp})
+                                      'rtemp': self._remocon_temp,
+                                      'kp': self._kp,
+                                      'ki': self._ki,
+                                      'kd': self._kd})
 
             datestr = self.ts2datestr(ts)
             self._logger.debug('%s: %.2f', datestr, temp)
@@ -269,16 +270,6 @@ class AutoAircon(threading.Thread):
                 self._stat.publish_param({'rtemp': self._remocon_temp})
 
         self._logger.debug('done')
-
-    def exec_cmd(self, cmd, param):
-        self._logger.debug('cmd=%s, param=%s', cmd, param)
-
-        try:
-            ret = self._cmd[cmd](param)
-        except KeyError:
-            self._logger.error('%s: no such command', cmd)
-            ret = {'rc': 'NG', 'msg': '%s: no such command' % cmd}
-        return ret
 
     def cmd_help(self, param):
         self._logger.debug('param=%s', param)
@@ -556,7 +547,7 @@ class AutoAirconStat:
 
     def publish_param(self, params):
         """
-        params: {'p1': val1, 'p2': val2, ..}
+        params := {'p1': val1, 'p2': val2, ..}
         """
         self._logger.debug('params=')
         for p in params:
@@ -654,10 +645,10 @@ class AutoAirconHandler(socketserver.StreamRequestHandler):
             self._logger.info('cmdline=%s', cmdline)
 
             try:
-                ret = self._svr._aa.exec_cmd(cmdline[0], cmdline[1])
+                ret = self._svr._aa._cmd[cmdline[0]](cmdline[1])
                 ret_str = json.dumps(ret)
-                self.net_write(ret_str + '\r\n')
                 self._logger.info('ret_str=%a', ret_str)
+                self.net_write(ret_str + '\r\n')
             except KeyError:
                 ret = {'rc': 'NG', 'msg': '%s: no such command' % cmdline[0]}
                 self._logger.error(json.dumps(ret))
@@ -793,30 +784,23 @@ class App:
         self._logger.debug('kp=%s, ki=%s, kd=%s, ki_i_max=%s',
                            kp, ki, kd, ki_i_max)
 
-        #
         self._loop = True
         self._msgq = queue.Queue()
 
         # objects
-        # temp = Temp(topic, debug=self._debug)
         temp = Temp(temp_topic)
 
         aircon = Aircon(dev, button_header, pin, debug=self._debug)
-
         aa_stat = AutoAirconStat(stat_topic, debug=self._debug)
-
         self._aa = AutoAircon(target_temp, temp, aircon,
                               aa_stat, kp, ki, kd, ki_i_max,
                               debug=self._debug)
-
         self._svr = AutoAirconServer(self._aa, self._msgq, svr_port,
                                      debug=self._debug)
 
         # threads
         self._svr_th = threading.Thread(target=self._svr.serve_forever,
                                         daemon=True)
-        self._logger.debug('_svr_th.daemon:%s', self._svr_th.daemon)
-
         self._cui_th = threading.Thread(target=self.cui, daemon=True)
 
     def main(self):
@@ -837,7 +821,6 @@ class App:
 
     def end(self):
         self._logger.debug('')
-        # self._aa.end()  # -> _svr.end()
         self._logger.debug('_svr.shutdown()')
         self._svr.shutdown()
         self._logger.debug('_svr.end()')
@@ -906,7 +889,7 @@ class App:
                 self._logger.debug('cmdline=%s', cmdline)
 
             try:
-                ret = self._aa.exec_cmd(cmdline[0], cmdline[1])
+                ret = self._aa._cmd[cmdline[0]](cmdline[1])
             except KeyError:
                 self._logger.error('%s: no such command', cmdline[0])
                 continue
