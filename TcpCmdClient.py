@@ -74,7 +74,7 @@ class TcpCmdClient:
         #  with telnetlib.Telnet(self._svr_host, self._svr_port) as tn:
         # 
         try:
-            tn = telnetlib.Telnet(self._svr_host, self._svr_port, timeout=3)
+            tn = telnetlib.Telnet(self._svr_host, self._svr_port, timeout=5)
         except Exception as e:
             msg = '%s, %s' % (type(e), e)
             self._logger.error(msg)
