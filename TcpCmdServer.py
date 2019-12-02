@@ -54,15 +54,17 @@ from MyLogger import get_logger
 
 class Cmd:
     """
-    __init__()を override する。
-    self.add_cmd()でコマンドを登録。
-    最後に、super().__init__() を呼び出す。
+    __init__()を override
+      self.add_cmd()でコマンドを登録。
+      最後に、super().__init__() を呼び出す。
 
     コマンドに対応する関数を定義する。
-
       def cmd_..(self, args):
         :
         return rc, msg
+
+    コマンド実行以外の処理は、main(), end()を override
+      self._active をフラグとして利用
 
     """
     DEF_PORT = 12399
@@ -76,15 +78,40 @@ class Cmd:
     FUNC_Q = 'func_q'
     HELP_STR = 'help'
 
-    def __init__(self, param=None, debug=False):
+    def __init__(self, init_param=None, debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
-        self._logger.debug('param=%s', param)
+        self._logger.debug('init_param=%s', init_param)
+
+        self._active = True  # main()の終了条件に使用
 
         self.add_cmd('sleep', self.cmd_i_sleep, self.cmd_q_sleep, 'sleep')
         self.add_cmd('help', self.cmd_i_help, None, 'command help')
         self.add_cmd('shutdown9999', self.cmd_i_shutdown, self.cmd_q_shutdown,
                      'shutdown server')
+
+    def main(self):
+        """
+        override
+        """
+        self._logger.debug('')
+
+        while self._active:
+            time.sleep(1)
+
+        self._logger.debug('done')
+
+    def end(self):
+        self._logger.debug('')
+        self._logger.debug('done')
+
+    def start(self):
+        self._logger.debug('')
+        self._active = True
+
+    def stop(self):
+        self._logger.debug('')
+        self._active = False
 
     def add_cmd(self, name, func_i, func_q, help_str):
         self._logger.debug('name=%a, func_i=%a, func_q=%a, help_str=%a',
@@ -372,6 +399,8 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
             #
             # queuing
             #
+
+            # check que size
             qsize = self._svr._app._cmdq.qsize()
             if qsize > 100:
                 msg = 'qsize=%d: server busy' % qsize
@@ -458,39 +487,38 @@ class CmdServer(socketserver.ThreadingTCPServer):
 
 class CmdServerApp:
     """
-    __init__()を override する。
-
-    最初に super().__init__()を呼び出す。
-    self._cmdに Cmdクラスのサブクラスを設定する。
     """
     SHUTDOWN_CMD = 'shutdown9999'
 
-    def __init__(self, cmd_class, param=None, port=Cmd.DEF_PORT, debug=False):
+    def __init__(self, cmd_class, init_param=None, port=Cmd.DEF_PORT,
+                 debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
-        self._logger.debug('cmd_class=%s, param=%s, port=%s',
-                           cmd_class, param, port)
+        self._logger.debug('cmd_class=%s, init_param=%s, port=%s',
+                           cmd_class, init_param, port)
 
         self._cmdq = queue.Queue()
 
-        self._cmd = cmd_class(param, debug=self._debug)
-
+        self._cmd = cmd_class(init_param, debug=self._debug)
         self._svr = CmdServer(self, port, self._debug)
         self._svr_th = threading.Thread(target=self._svr.serve_forever,
                                         daemon=True)
+        self._cmd_worker_th = threading.Thread(target=self.cmd_worker,
+                                               daemon=True)
+    def cmd_worker(self):
+        self._logger.debug('')
 
-    def main(self):
-        self._logger.debug('_svr_th.daemon=%s', self._svr_th.daemon)
-
-        self._svr_th.start()
-
-        while True:
+        loop = True
+        
+        while loop:
             args, repq = self._cmdq.get()
             self._logger.info('args=%a', args)
 
-            # call cmd
+            # check and call cmd
             if args[0] in self._cmd._cmd:
                 if self._cmd._cmd[args[0]][Cmd.FUNC_Q] is not None:
+
+                    # call cmd
                     self._logger.debug('call %s: %a', Cmd.FUNC_Q, args)
                     rc, msg = self._cmd._cmd[args[0]][Cmd.FUNC_Q](args)
 
@@ -500,7 +528,7 @@ class CmdServerApp:
                         self._logger.error('rc=%a, msg=%a', rc, msg)
                 else:
                     rc = Cmd.RC_NG
-                    msg = '%s: no %s .. ignored' % (args[0], Cmd.FUNC_Q)
+                    msg = '%s: no such %s .. ignored' % (args[0], Cmd.FUNC_Q)
                     self._logger.error(msg)
             else:
                 rc = Cmd.RC_NG
@@ -519,6 +547,15 @@ class CmdServerApp:
 
             time.sleep(0.1)
 
+        self._cmd.stop()
+        self._logger.debug('done')
+
+    def main(self):
+        self._svr_th.start()
+        self._cmd_worker_th.start()
+
+        self._cmd.main()
+
         self._logger.debug('done')
 
     def end(self):
@@ -529,6 +566,7 @@ class CmdServerApp:
             if repq is not None:
                 repq.put((Cmd.RC_NG, 'terminated'))
         self._svr.end()
+        self._cmd.end()
         self._logger.debug('done')
 
 

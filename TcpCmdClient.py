@@ -20,9 +20,9 @@ from MyLogger import get_logger
 
 class TcpCmdClient:
     DEF_SVR_HOST = 'localhost'
-    DEF_SVR_PORT = 12352
+    DEF_SVR_PORT = Cmd.DEF_PORT
 
-    DEF_TIMEOUT = 20  # sec
+    DEF_TIMEOUT = 10  # sec
 
     EOF = b'\04'
 
@@ -51,7 +51,7 @@ class TcpCmdClient:
 
     def send_recv_str(self, args_str, timeout=DEF_TIMEOUT, newline=False):
         """
-        timeout=0: 返信を受信しない
+        timeout=0: 送信のみ、返信を受信しない
         """
         self._logger.debug('args_str=%a, timeout=%s, newline=%s',
                            args_str, timeout, newline)
@@ -70,20 +70,19 @@ class TcpCmdClient:
             self._logger.debug('out_data=%a', out_data)
 
         # Python3.6 以降は下記の記述ができるが、互換性のためあえて使わない。
-        # 
+        #
         #  with telnetlib.Telnet(self._svr_host, self._svr_port) as tn:
-        # 
+        #
         try:
             tn = telnetlib.Telnet(self._svr_host, self._svr_port, timeout=5)
+            tn.write(out_data)
         except Exception as e:
             msg = '%s, %s' % (type(e), e)
             self._logger.error(msg)
             return json.dumps({'rc': Cmd.RC_NG, 'msg': msg})
 
-        tn.write(out_data)
-
         if timeout == 0:
-            rep = b'{"rc": "OK", "msg": "don\'t wait"}'
+            rep = b'{"rc": "OK", "msg": "send only"}'
         else:
             rep = b''
             while True:
@@ -110,8 +109,8 @@ class TcpCmdClient:
         if len(rep) == 0:
             msg = 'timeout'
             self._logger.error(msg)
-            return json.dumps({'rc': Cmd.RC_NG, 'msg': 'timeout'})
-            
+            return json.dumps({'rc': Cmd.RC_NG, 'msg': msg})
+
         rep_str = rep.decode('utf-8').strip()
         self._logger.debug('rep_str=%a', rep_str)
         return rep_str

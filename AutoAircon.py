@@ -126,11 +126,11 @@ class Aircon:
         else:
             self._logger.info('%s:%s', cmd_args, self._irsend.reply2str(ret))
 
-    def irsend_temp(self, temp):
-        self._logger.debug('temp=%d', temp)
+    def irsend_rtemp(self, rtemp):
+        self._logger.debug('rtemp=%d', rtemp)
 
-        button = self._button_header + str(temp)
-        if temp == 0:
+        button = self._button_header + str(rtemp)
+        if rtemp == 0:
             button = 'off'
         self._logger.debug('button=%s', button)
 
@@ -266,7 +266,7 @@ class AutoAircon(threading.Thread):
                 self._remocon_temp = remocon_temp
                 self._logger.debug('_remocon_temp=%d', remocon_temp)
 
-                self.irsend_temp()
+                self.irsend_rtemp()
                 self._stat.publish_param({'rtemp': self._remocon_temp})
 
         self._logger.debug('done')
@@ -357,7 +357,7 @@ class AutoAircon(threading.Thread):
             remocon_temp = int(param)
             self._remocon_temp = remocon_temp
             self._stat.publish_param({'rtemp': self._remocon_temp})
-            self.irsend_temp(remocon_temp, force=True)
+            self.irsend_rtemp(remocon_temp, force=True)
         else:
             remocon_temp = self._remocon_temp
 
@@ -375,7 +375,7 @@ class AutoAircon(threading.Thread):
             self._stat.publish_param({'ttemp': self._target_temp,
                                       'rtemp': self._remocon_temp})
 
-            self.irsend_temp(self._remocon_temp, force=True)
+            self.irsend_rtemp(self._remocon_temp, force=True)
         else:
             target_temp = self._target_temp
 
@@ -388,7 +388,7 @@ class AutoAircon(threading.Thread):
         self._ir_active = True
         self._stat.publish_param({'active': self._ir_active})
 
-        self.irsend_temp(force=True)
+        self.irsend_rtemp(force=True)
         self._i = 0
 
         ret = {'rc': 'OK', 'msg': 'on'}
@@ -400,7 +400,7 @@ class AutoAircon(threading.Thread):
         self._ir_active = False
         self._stat.publish_param({'active': self._ir_active})
 
-        self.irsend_temp(0, force=True)
+        self.irsend_rtemp(0, force=True)
 
         ret = {'rc': 'OK', 'msg': 'off'}
         return ret
@@ -487,7 +487,7 @@ class AutoAircon(threading.Thread):
 
         self._logger.info('( p_,  i_,  d_ )=(%5.2f,%7.2f,%6.3f)', p_, i_, d_)
         self._logger.info('(kp_p,ki_i,kd_d)=(%5.2f,%7.2f,%5.2f)',
-                           kp_p, ki_i, kd_d)
+                          kp_p, ki_i, kd_d)
         self._logger.info('pid=%f', pid)
 
         self._stat.publish_param({'kp_p': kp_p, 'ki_i': ki_i, 'kd_d': kd_d,
@@ -505,28 +505,28 @@ class AutoAircon(threading.Thread):
         """
         return self._temp._bbt.ts2datestr(ts_msec * 1000)
 
-    def irsend_temp(self, temp=None, force=False):
+    def irsend_rtemp(self, rtemp=None, force=False):
         """
         Parameters
         ----------
-        temp: 0:off, None:_remocon_temp
+        rtemp: 0:off, None:_remocon_temp
         force: bool
         """
-        self._logger.debug('temp=%s, force=%s', temp, force)
+        self._logger.debug('rtemp=%s, force=%s', rtemp, force)
 
-        if temp is None:
-            temp = self._remocon_temp
-        temp = int(temp)
-        self._logger.debug('temp=%d', temp)
+        if rtemp is None:
+            rtemp = self._remocon_temp
+        rtemp = int(rtemp)
+        self._logger.debug('rtemp=%d', rtemp)
 
         self._logger.debug('_ir_active=%s', self._ir_active)
         if self._ir_active or force:
             self._ir_active = True
-            if temp == 0:
+            if rtemp == 0:
                 self._ir_active = False
             self._logger.debug('_ir_active=%s', self._ir_active)
             self._stat.publish_param({'active': self._ir_active})
-            self._aircon.irsend_temp(temp)
+            self._aircon.irsend_rtemp(rtemp)
 
 
 class AutoAirconStat:
