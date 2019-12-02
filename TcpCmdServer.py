@@ -87,6 +87,8 @@ class Cmd:
 
         self.add_cmd('sleep', self.cmd_i_sleep, self.cmd_q_sleep, 'sleep')
         self.add_cmd('help', self.cmd_i_help, None, 'command help')
+        self.add_cmd(CmdServerHandler.CMD_EXIT, self.cmd_i_exit, None,
+                     'disconnect')
         self.add_cmd('shutdown9999', self.cmd_i_shutdown, self.cmd_q_shutdown,
                      'shutdown server')
 
@@ -99,6 +101,7 @@ class Cmd:
         while self._active:
             time.sleep(1)
 
+        self._active = False
         self._logger.debug('done')
 
     def end(self):
@@ -108,10 +111,18 @@ class Cmd:
     def start(self):
         self._logger.debug('')
         self._active = True
+        self._logger.debug('done')
 
-    def stop(self):
+    def stop_main(self):
+        """
+        override:
+        main()内の処理を止める。
+        その後の終了処理(資源の開放やサブスレッドの終了など)は、
+        end() で行う。
+        """
         self._logger.debug('')
         self._active = False
+        self._logger.debug('done')
 
     def add_cmd(self, name, func_i, func_q, help_str):
         self._logger.debug('name=%a, func_i=%a, func_q=%a, help_str=%a',
@@ -192,6 +203,13 @@ class Cmd:
         self._logger.debug('sleep:done')
         return rc, msg
 
+    def cmd_i_exit(self, args):
+        """
+        接続を切断する。
+        """
+        self._logger.debug('args=%a', args)
+        return self.RC_OK, None
+
     def cmd_i_shutdown(self, args):
         """
         指定された秒数後にサーバープロセスをシャットダウン。
@@ -250,6 +268,8 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
     override 不要
     """
     DEF_HANDLE_TIMEOUT = 3  # sec
+
+    CMD_EXIT = 'exit'
 
     EOF = '\x04'
 
@@ -379,6 +399,10 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
                 rc, msg = self._svr._app._cmd._cmd[args[0]][Cmd.FUNC_I](args)
                 self._logger.info('rc=%s, msg=%s', rc, msg)
 
+                if args[0] == self.CMD_EXIT:
+                    self._active = False
+                    self._logger.debug('_active=%s', self._active)
+
                 if rc != Cmd.RC_CONT and rc != Cmd.RC_ACCEPT:
                     self.send_reply(rc, msg)
                     continue
@@ -505,11 +529,12 @@ class CmdServerApp:
                                         daemon=True)
         self._cmd_worker_th = threading.Thread(target=self.cmd_worker,
                                                daemon=True)
+
     def cmd_worker(self):
         self._logger.debug('')
 
         loop = True
-        
+
         while loop:
             args, repq = self._cmdq.get()
             self._logger.info('args=%a', args)
@@ -547,7 +572,7 @@ class CmdServerApp:
 
             time.sleep(0.1)
 
-        self._cmd.stop()
+        self._cmd.stop_main()
         self._logger.debug('done')
 
     def main(self):
