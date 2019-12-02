@@ -151,7 +151,7 @@ class AutoAircon(threading.Thread):
 
     DEF_KI_I_MAX = 5.0
 
-    REMOCON_TEMP_MIN = 22
+    REMOCON_TEMP_MIN = 23
     REMOCON_TEMP_MAX = 30
 
     def __init__(self, target_temp, temp=None, aircon=None, aa_stat=None,
@@ -237,7 +237,7 @@ class AutoAircon(threading.Thread):
                                       'rtemp': self._remocon_temp,
                                       'kp': self._kp,
                                       'ki': self._ki,
-                                      'kd': self._kd})
+                                      'kd': self._kd, })
 
             datestr = self.ts2datestr(ts)
             self._logger.debug('%s: %.2f', datestr, temp)
@@ -485,13 +485,14 @@ class AutoAircon(threading.Thread):
         # PID
         pid = kp_p + ki_i + kd_d
 
-        self._logger.debug('( p_,  i_,  d_ )=(%5.2f,%7.2f,%6.3f)', p_, i_, d_)
-        self._logger.debug('(kp_p,ki_i,kd_d)=(%5.2f,%7.2f,%5.2f)',
+        self._logger.info('( p_,  i_,  d_ )=(%5.2f,%7.2f,%6.3f)', p_, i_, d_)
+        self._logger.info('(kp_p,ki_i,kd_d)=(%5.2f,%7.2f,%5.2f)',
                            kp_p, ki_i, kd_d)
-        self._logger.debug('pid=%f', pid)
+        self._logger.info('pid=%f', pid)
 
         self._stat.publish_param({'kp_p': kp_p, 'ki_i': ki_i, 'kd_d': kd_d,
                                   'pid': pid})
+
         return pid
 
     def ts2datestr(self, ts_msec):
@@ -907,7 +908,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 @click.command(context_settings=CONTEXT_SETTINGS,
                help='AutoAircon')
-@click.argument('target_temp', type=float, default=25.5)
+@click.argument('target_temp', type=float, default=26.0)
 @click.option('--tty', 'tty', is_flag=True, default=False,
               help='tty command input')
 @click.option('--dev', 'dev', type=str,
