@@ -123,13 +123,18 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.option('--svrport', '--port', '-p', 'svrport', type=int,
               default=IrSendCmdClient.DEF_SVR_PORT,
               help='server port nubmer')
+@click.option('--timeout', '-t', 'timeout', type=float,
+              default=TcpCmdClient.DEF_TIMEOUT,
+              help='timeout sec(float)')
 @click.option('--debug', '-d', 'debug', is_flag=True, default=False,
               help='debug flag')
-def main(args, svrhost, svrport, debug):
+def main(args, svrhost, svrport, timeout, debug):
     logger = get_logger(__name__, debug)
-    logger.debug('args=%s, svrhost=%s, svrport=%d', args, svrhost, svrport)
+    logger.debug('args=%s, svrhost=%s, svrport=%d, timeout=%s',
+                 args, svrhost, svrport, timeout)
 
-    app = TcpCmdClientApp(IrSendCmdClient, args, svrhost, svrport, debug=debug)
+    app = TcpCmdClientApp(IrSendCmdClient, args, svrhost, svrport, timeout,
+                          debug=debug)
     try:
         app.main()
     finally:

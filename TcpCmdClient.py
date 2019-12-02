@@ -11,6 +11,7 @@ TCP client that send command strings and get reply string
 __author__ = 'Yoichi Tanibayashi'
 __date__   = '2019'
 
+from TcpCmdServer import Cmd
 import telnetlib
 import json
 
@@ -59,44 +60,57 @@ class TcpCmdClient:
             args_str += '\r\n'
             self._logger.debug('args_str=%a', args_str)
 
-        with telnetlib.Telnet(self._svr_host, self._svr_port) as tn:
-            try:
-                out_data = args_str.encode('utf-8')
-            except UnicodeDecodeError as e:
-                rep_str = '%s, %s' % (type(e), e)
-                self._logger.error(rep_str)
-                return rep_str
-            else:
-                self._logger.debug('out_data=%a', out_data)
+        try:
+            out_data = args_str.encode('utf-8')
+        except UnicodeDecodeError as e:
+            msg = '%s, %s' % (type(e), e)
+            self._logger.error(msg)
+            return json.dumps({'rc': Cmd.RC_NG, 'msg': msg})
+        else:
+            self._logger.debug('out_data=%a', out_data)
 
-            tn.write(out_data)
+        # Python3.6 以降は下記の記述ができるが、互換性のためあえて使わない。
+        # 
+        #  with telnetlib.Telnet(self._svr_host, self._svr_port) as tn:
+        # 
+        try:
+            tn = telnetlib.Telnet(self._svr_host, self._svr_port, timeout=3)
+        except Exception as e:
+            msg = '%s, %s' % (type(e), e)
+            self._logger.error(msg)
+            return json.dumps({'rc': Cmd.RC_NG, 'msg': msg})
 
-            if timeout == 0:
-                rep = b'{"rc": "OK", "msg": "don\'t wait"}'
-            else:
-                rep = b''
-                while True:
-                    in_data = b''
-                    try:
-                        in_data = tn.read_until(self.EOF, timeout=timeout)
-                    except Exception as e:
-                        self._logger.warning('%s: %s.', type(e), e)
-                        break
-                    else:
-                        self._logger.debug('in_data=%a', in_data)
+        tn.write(out_data)
 
-                    if in_data == b'':
-                        break
+        if timeout == 0:
+            rep = b'{"rc": "OK", "msg": "don\'t wait"}'
+        else:
+            rep = b''
+            while True:
+                in_data = b''
+                try:
+                    in_data = tn.read_until(self.EOF, timeout=timeout)
+                except Exception as e:
+                    self._logger.warning('%s: %s.', type(e), e)
+                    break
+                else:
+                    self._logger.debug('in_data=%a', in_data)
 
-                    rep += in_data
-                    self._logger.debug('rep=%a', rep)
-                    if self.EOF in rep:
-                        self._logger.debug('EOF')
-                        rep = rep[:-1]
-                        break
+                if in_data == b'':
+                    break
+
+                rep += in_data
+                self._logger.debug('rep=%a', rep)
+                if self.EOF in rep:
+                    self._logger.debug('EOF')
+                    rep = rep[:-1]
+                    break
+        tn.close()
 
         if len(rep) == 0:
-            rep = b'{"rc": "NG", "msg": "timeout"}'
+            msg = 'timeout'
+            self._logger.error(msg)
+            return json.dumps({'rc': Cmd.RC_NG, 'msg': 'timeout'})
             
         rep_str = rep.decode('utf-8').strip()
         self._logger.debug('rep_str=%a', rep_str)
