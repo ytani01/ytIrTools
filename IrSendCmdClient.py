@@ -117,7 +117,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
 @click.command(context_settings=CONTEXT_SETTINGS,
-               help='IrSendClient')
+               help='IrSendCmdClient')
 @click.argument('args', type=str, nargs=-1)
 @click.option('--svrhost', '-s', 'svrhost', type=str,
               default=IrSendCmdClient.DEF_SVR_HOST,

@@ -1,21 +1,26 @@
 # ytIrTools for Raspberry Pi
-### Raspberry Pi + pigpio + python3 による、赤外線リモコン制御・解析ツール
+
+Raspberry Pi + pigpio + python3 による、赤外線リモコン制御・解析ツール
+
 
 ## 概要
 
 * LIRCなどは使わず、pigpioのPythonライブラリで作成 -- 高性能で高い柔軟性
-* 正確な信号解析。(IrAnalyze.py)
-* 信号フォーマットは、AEHA,SONY,NEC以外に、DYSON,BOSEなどの一部機器にも対応
-* 送受信を同時に行える。
-* 赤外線送受信につかうGPIOピンを(PWM用の12, 13, 18以外で)自由に選べる
+* 正確な信号解析(IrAnalyze.py)
+* 信号フォーマットは、AEHA,SONY,NEC以外に、DYSON,BOSEほか、あらゆる機器に対応
+* 送受信を同時に行える
+* 赤外線送受信につかうGPIOピンを(PWM用の12, 13, 18, 19以外で)自由に選べる
+
+ちなみに…
+GPIO の ON/OFF で信号を出しているのではなく、
+pigpioの wave関数を使って、高品質な赤外線信号を実現してます。
+
 
 ## 注意
 
-PWM用のピン(GPIO 12,13,18)は、使用できなくなります。
-(クロックとして使用しているため)
+PWM用のピン(GPIO 12,13,18,19)は、使用しないで下さい。
 
-※ pigpiodをデフォルト(クロック=PCM)で立ち上げると不安定になる??
-
+* pigpiodをデフォルト(クロック=PCM)で立ち上げると不安定になる??
 
 
 ## Comands
@@ -27,23 +32,21 @@ PWM用のピン(GPIO 12,13,18)は、使用できなくなります。
 ```bash
 $ sudo pigpiod -t 0
 ```
-※オプション「-t 0」がないと、不安定になる(?)
+* オプション「-t 0」がないと、不安定になる(?)
 
-自動起動する場合は、crontabを設定。(crontab.sample参照)
+自動起動する場合は、crontabを設定。(crontab.sample 参照)
 
-※(注意) コマンド "crontab crontab.sample" を実行すると、
+(注意) コマンドラインで "$ crontab crontab.sample" を実行すると、
 今までの crontabが全て消去されます！
 
 
-### IrSendServer.py -- 赤外線信号送信サーバー
+### IrSendCmdServer.py -- 赤外線信号送信サーバー
+
+赤外線信号を送信する場合は、あらかじめ起動しておいて下さい。
+(crontab.sample 参照)
 
 
-
-### IrSendClient.py -- 赤外線信号送信クライアント
-
-
-
-### IrSendClient.py -- 赤外線信号送信
+### IrSendCmdClient.py -- 赤外線信号送信クライアント
 
 デバイス名とボタン名を指定して、赤外線信号を送信する。
 デバイス名・ボタンの設定は後述。
@@ -52,15 +55,21 @@ $ sudo pigpiod -t 0
 デバイス名だけを指定した場合は、ボタン一覧
 を表示。
 ```
-Usage: ir-send [OPTIONS] [ARG]...
+$ IrSendCmdClient.py -h
 
-  IrSendClient
+Usage: IrSendCmdClient.py [OPTIONS] [ARG]...
+
+  IrSendCmdClient
 
 Options:
   -s, --svrhost TEXT  server hostname
   -p, --port INTEGER  server port nubmer
   -d, --debug         debug flag
   -h, --help          Show this message and exit.
+
+$ IrSendCmdClient.py @load
+設定ファイルの再読み込み
+
 ```
 
 ### IrAnalyze.py -- 赤外線信号受信・解析
@@ -93,6 +102,7 @@ Options:
 * IrAnalyze.py の出力(/tmp/ir_dump.irconf)を元に、
 デバイス名、ボタン名などを設定できる。
 * マクロ文字列を使えば、効率良く、わかりやすい記述が可能。
+
 
 ### ファイル名
 
