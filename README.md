@@ -23,6 +23,13 @@ PWM用のピン(GPIO 12,13,18,19)は、使用しないで下さい。
 * pigpiodをデフォルト(クロック=PCM)で立ち上げると不安定になる??
 
 
+## ハードウェア
+
+下記のページの回路を使うと、強力な赤外線信号を広範囲に送信できます。
+
+* [ESP-WROOM-02で赤外線学習リモコン](https://github.com/Goji2100/IRServer)
+
+
 ## Comands
 
 ### [pigpiod](http://abyz.me.uk/rpi/pigpio/)
@@ -66,6 +73,15 @@ Options:
   -p, --port INTEGER  server port nubmer
   -d, --debug         debug flag
   -h, --help          Show this message and exit.
+
+$ IrSendCmdClient.py dev1 button1 button2
+デバイス「dev1」のボタン「button1」と「button2」を連続して送信
+
+$ IrSendCmdClient.py
+設定されているデバイス一覧
+
+$ IrSendCmdClient.py dev1
+デバイス「dev1」に設定されているボタン一覧
 
 $ IrSendCmdClient.py @load
 設定ファイルの再読み込み
