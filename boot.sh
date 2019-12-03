@@ -14,7 +14,7 @@ ts_echo "> ${MYNAME}: start"
 
 NAME_PIGPIOD="pigpiod"
 NAME_IRSENDSERVER="IrSendCmdServer"
-NAME_AUTOAIRCON="AutoAircon"
+NAME_AUTOAIRCON="AutoAirconServer"
 
 LOGDIR=${HOME}/tmp
 LOG_IRSENDSERVER=${LOGDIR}/${NAME_IRSENDSERVER}.log

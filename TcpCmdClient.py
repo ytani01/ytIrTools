@@ -24,7 +24,8 @@ class TcpCmdClient:
 
     DEF_TIMEOUT = 10  # sec
 
-    EOF = b'\04'
+    EOF = b'\x04'
+    EOL = b'\r\n'
 
     def __init__(self, host=DEF_SVR_HOST, port=DEF_SVR_PORT, debug=False):
         self._debug = debug
@@ -90,7 +91,7 @@ class TcpCmdClient:
                 try:
                     in_data = tn.read_until(self.EOF, timeout=timeout)
                 except Exception as e:
-                    self._logger.warning('%s: %s.', type(e), e)
+                    self._logger.warning('%s:%s', type(e), e)
                     break
                 else:
                     self._logger.debug('in_data=%a', in_data)

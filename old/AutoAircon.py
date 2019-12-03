@@ -151,7 +151,7 @@ class AutoAircon(threading.Thread):
 
     DEF_KI_I_MAX = 5.0
 
-    REMOCON_TEMP_MIN = 23
+    REMOCON_TEMP_MIN = 22
     REMOCON_TEMP_MAX = 30
 
     def __init__(self, target_temp, temp=None, aircon=None, aa_stat=None,

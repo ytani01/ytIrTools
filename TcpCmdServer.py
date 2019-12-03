@@ -325,10 +325,11 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
         else:
             rep = {'rc': rc, 'msg': msg}
         rep_str = json.dumps(rep)
-        self._logger.debug('rep_str=%a', rep_str)
-        self.net_write(rep_str + '\r\n')
+        rep_str += '\r\n'
         if not cont:
-            self.net_write(self.EOF)
+            rep_str += self.EOF
+        self._logger.debug('rep_str=%a', rep_str)
+        self.net_write(rep_str)
 
     def handle(self):
         self._logger.debug('')
@@ -450,7 +451,10 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
             # wait result from _myq
             self._logger.debug('wait result')
             rc, msg = self._myq.get()
-            self._logger.info('rc=%s, msg=%s', rc, msg)
+            if rc == Cmd.RC_OK:
+                self._logger.debug('rc=%s, msg=%s', rc, msg)
+            else:
+                self._logger.error('rc=%s, msg=%s', rc, msg)
 
             # send reply
             self.send_reply(rc, msg)
