@@ -3,6 +3,10 @@ gpio_pin = 22
 dev_name = aircon
 button_header = on_hot_auto_
 
+[ir]
+host = localhost
+port = 12353
+
 [temp]
 topic = env1/temp
 
