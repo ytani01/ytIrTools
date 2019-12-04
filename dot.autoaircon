@@ -13,7 +13,7 @@ topic = env1/temp
 topic = aircon1/param
 kp = 4
 ki = 0.03
-kd = 500
+kd = 450
 ki_i_max = 5.0
 
 [param]

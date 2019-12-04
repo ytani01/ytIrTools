@@ -55,6 +55,8 @@ class Aircon(IrSendCmdClient):
     DEF_BHDR = 'on_hot_auto_'
     DEF_IR_HOST = 'localhost'
 
+    DEF_MIN_SET_TEMP_INTERVAL = 10  # sec
+
     TEMP_OFF = 0
 
     def __init__(self, dev=DEF_DEV, bhdr=DEF_BHDR, ir_host=DEF_IR_HOST,
@@ -67,6 +69,8 @@ class Aircon(IrSendCmdClient):
         self._dev = dev
         self._bhdr = bhdr
         self._rtemp = 0
+        self._ts_set_temp = 0
+        self._min_set_temp_interval = self.DEF_MIN_SET_TEMP_INTERVAL
 
         super().__init__(ir_host, debug=self._debug)
 
@@ -76,9 +80,14 @@ class Aircon(IrSendCmdClient):
         if not force:
             if rtemp == self._rtemp:
                 self._logger.debug('rtemp==_rtemp=%s', self._rtemp)
-                return
+                return False
 
-        self._rtemp = rtemp
+        ts_now = time.time()
+        interval = ts_now - self._ts_set_temp
+        if interval < self._min_set_temp_interval:
+            self._logger.info('rtemp=%s, interval=%.1f < %s .. skip',
+                              rtemp, interval, self._min_set_temp_interval)
+            return False
 
         button = self._bhdr + '%02d' % rtemp
         if rtemp == self.TEMP_OFF:
@@ -91,8 +100,14 @@ class Aircon(IrSendCmdClient):
             ret = self.send_recv(args)
         except Exception as e:
             self._logger.error('%s:%s', type(e), e)
+            return False
         else:
-            self._logger.info('%s:%s', args, self.reply2str(ret))
+            self._logger.info('%s: %s', args, self.reply2str(ret))
+
+        self._ts_set_temp = ts_now
+        self._rtemp = rtemp
+
+        return True
 
 
 class TempHist:
@@ -152,8 +167,6 @@ class AutoAirconCmd(Cmd):
     RTEMP_MIN = 20
     RTEMP_MAX = 30
 
-    DEF_MIN_SET_TEMP_INTERVAL = 10  # sec
-
     TEMP_END = 0
 
     def __init__(self, init_param=None, debug=False):
@@ -198,7 +211,6 @@ class AutoAirconCmd(Cmd):
         self._rtemp = round(self._ttemp)
 
         self._on = True
-        self._min_set_temp_interval = self.DEF_MIN_SET_TEMP_INTERVAL
 
         self._bbt = Beebotte(self._temp_topic, debug=False)
         self._aircon = Aircon(aircon_dev, aircon_bhdr, ir_host,
@@ -214,8 +226,6 @@ class AutoAirconCmd(Cmd):
 
         self._bbt.start()
         self._bbt.subscribe()
-
-        ts_set_temp = 0
 
         while self._active:
             msg_type, msg_data = self._bbt.wait_msg(self._bbt.MSG_DATA)
@@ -253,7 +263,6 @@ class AutoAirconCmd(Cmd):
 
             self._param_cl.send_param({
                 'active': self._on,
-                'rtemp': self._rtemp,
                 'ttemp': self._ttemp,
                 'temp': self._temp,
             })
@@ -262,15 +271,8 @@ class AutoAirconCmd(Cmd):
                 self._logger.debug('_on=%s .. not active', self._on)
                 continue
 
-            ts_now = time.time()
-            interval = ts_now - ts_set_temp
-            if interval < self._min_set_temp_interval:
-                self._logger.info('_rtemp=%s, interval=%.1f < %s .. skip',
-                                  self._rtemp,
-                                  interval, self._min_set_temp_interval)
-                continue
-            ts_set_temp = ts_now
-            self._aircon.set_temp(self._rtemp)
+            if self._aircon.set_temp(self._rtemp):
+                self._param_cl.send_param({'rtemp': self._rtemp})
 
         self._active = False
         self._logger.debug('done')
