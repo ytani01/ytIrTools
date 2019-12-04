@@ -1,11 +1,10 @@
 [aircon]
-gpio_pin = 22
 dev_name = aircon
 button_header = on_hot_auto_
 
 [ir]
 host = localhost
-port = 12353
+port = 51001
 
 [temp]
 topic = env1/temp
@@ -22,4 +21,4 @@ host = localhost
 port = 51888
 
 [server]
-port = 12351
+port = 51002

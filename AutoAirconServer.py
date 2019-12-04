@@ -144,7 +144,7 @@ class AutoAirconCmd(Cmd):
     CONF_FILENAME = ['autoaircon.conf', '.autoaircon.conf', '.autoaircon']
     CONF_PATH = ['.', os.environ['HOME'], '/etc']
 
-    DEF_PORT = 12359
+    DEF_PORT = 51002
 
     DEF_TTEMP = 26
 

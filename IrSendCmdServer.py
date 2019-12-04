@@ -19,7 +19,7 @@ class IrSendCmd(Cmd):
     """
     赤外線リモコン信号送信コマンドの定義
     """
-    DEF_PORT = 12353
+    DEF_PORT = 51001
 
     CMD_NAME = 'irsend'
 

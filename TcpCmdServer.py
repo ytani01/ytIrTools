@@ -67,7 +67,7 @@ class Cmd:
       self._active をフラグとして利用
 
     """
-    DEF_PORT = 12399
+    DEF_PORT = 59001
 
     RC_OK = 'OK'  # OK .. FUNC_I の場合は、キューイング不要
     RC_NG = 'NG'  # NG
@@ -481,7 +481,8 @@ class CmdServer(socketserver.ThreadingTCPServer):
             try:
                 super().__init__(('', self._port), CmdServerHandler)
                 self._active = True
-                self._logger.debug('_active=%s', self._active)
+                self._logger.info('_active=%s,_port=%s',
+                                  self._active, self._port)
             except PermissionError as e:
                 self._logger.error('%s:%s.', type(e), e)
                 raise
