@@ -55,9 +55,12 @@ class Aircon(IrSendCmdClient):
     DEF_BHDR = 'on_hot_auto_'
     DEF_IR_HOST = 'localhost'
 
+    RTEMP_MIN = 20
+    RTEMP_MAX = 30
+
     DEF_MIN_SET_TEMP_INTERVAL = 10  # sec
 
-    TEMP_OFF = 0
+    BUTTON_OFF = 'off'
 
     def __init__(self, dev=DEF_DEV, bhdr=DEF_BHDR, ir_host=DEF_IR_HOST,
                  debug=False):
@@ -68,34 +71,20 @@ class Aircon(IrSendCmdClient):
 
         self._dev = dev
         self._bhdr = bhdr
-        self._rtemp = 0
+        self._rtemp = self.RTEMP_MIN
         self._ts_set_temp = 0
         self._min_set_temp_interval = self.DEF_MIN_SET_TEMP_INTERVAL
+        self._on = False
 
         super().__init__(ir_host, debug=self._debug)
 
-    def set_temp(self, rtemp, force=False):
-        self._logger.debug('rtemp=%s', rtemp)
+    def on(self):
+        self._logger.debug('')
+        self.set_temp(self._rtemp, force=True)
 
-        if not force:
-            if rtemp == self._rtemp:
-                self._logger.debug('rtemp==_rtemp=%s', self._rtemp)
-                return False
-
-        ts_now = time.time()
-        interval = ts_now - self._ts_set_temp
-        if interval < self._min_set_temp_interval:
-            self._logger.info('rtemp=%s, interval=%.1f < %s .. skip',
-                              rtemp, interval, self._min_set_temp_interval)
-            return False
-
-        button = self._bhdr + '%02d' % rtemp
-        if rtemp == self.TEMP_OFF:
-            button = 'off'
-        self._logger.debug('button=%s', button)
-
-        args = [self._dev, button]
-
+    def off(self):
+        self._logger.debug('')
+        args = [self._dev, self.BUTTON_OFF]
         try:
             ret = self.send_recv(args)
         except Exception as e:
@@ -104,10 +93,50 @@ class Aircon(IrSendCmdClient):
         else:
             self._logger.info('%s: %s', args, self.reply2str(ret))
 
+        self._on = False
+        return True
+
+    def is_on(self):
+        return self._on
+
+    def set_temp(self, rtemp, force=False):
+        self._logger.info('rtemp=%s', rtemp)
+
+        if rtemp > self.RTEMP_MAX:
+            rtemp = self.RTEMP_MAX
+            self._logger.info('fix: rtemp=%d', rtemp)
+        if rtemp < self.RTEMP_MIN:
+            rtemp = self.RTEMP_MIN
+            self._logger.info('fix: rtemp=%d', rtemp)
+
+        if not force and rtemp == self._rtemp:
+            self._logger.info('rtemp==_rtemp=%s .. ignored', self._rtemp)
+            return None
+
+        ts_now = time.time()
+        interval = ts_now - self._ts_set_temp
+        if not force and interval < self._min_set_temp_interval:
+            self._logger.info('rtemp=%s, interval=%.1f < %s .. ignored',
+                              rtemp, interval, self._min_set_temp_interval)
+            return None
+
+        button = self._bhdr + '%02d' % rtemp
+        args = [self._dev, button]
+        self._logger.debug('args=%s', args)
+
+        try:
+            ret = self.send_recv(args)
+        except Exception as e:
+            self._logger.error('%s:%s', type(e), e)
+            return None
+        else:
+            self._logger.info('%s: %s', args, self.reply2str(ret))
+
+        self._on = True
         self._ts_set_temp = ts_now
         self._rtemp = rtemp
 
-        return True
+        return self._rtemp
 
 
 class TempHist:
@@ -164,9 +193,6 @@ class AutoAirconCmd(Cmd):
 
     DEF_TTEMP = 26
 
-    RTEMP_MIN = 20
-    RTEMP_MAX = 30
-
     TEMP_END = 0
 
     def __init__(self, init_param=None, debug=False):
@@ -206,11 +232,9 @@ class AutoAirconCmd(Cmd):
 
         self._i = 0
 
-        self._temp = 0
         self._ttemp = self.DEF_TTEMP
         self._rtemp = round(self._ttemp)
-
-        self._on = True
+        self._temp = self._ttemp
 
         self._bbt = Beebotte(self._temp_topic, debug=False)
         self._aircon = Aircon(aircon_dev, aircon_bhdr, ir_host,
@@ -227,10 +251,14 @@ class AutoAirconCmd(Cmd):
         self._bbt.start()
         self._bbt.subscribe()
 
+        self._aircon.on()
+
         while self._active:
+            # BeebotteからMQTTで温度を取得
             msg_type, msg_data = self._bbt.wait_msg(self._bbt.MSG_DATA)
             self._logger.debug('%s, %s', msg_type, msg_data)
 
+            # シャットダウン チェック
             if not self._active:
                 self._logger.info('_active=%s .. shutdown', self._active)
                 break
@@ -238,40 +266,52 @@ class AutoAirconCmd(Cmd):
             if msg_type != self._bbt.MSG_DATA:
                 continue
 
+            # メッセージのpayloadから、タイムスタンプと温度を抽出
             payload = msg_data['payload']
             ts_str = self._bbt.ts2datestr(payload['ts'])
-            ts = payload['ts'] / 1000  # msec -> sec
-            self._temp = float(payload['data'])
+            self._logger.debug('ts_str=%s', ts_str)
 
+            ts = payload['ts'] / 1000  # msec -> sec
+
+            self._temp = float(payload['data'])
+            self._logger.info('_temp,_ttemp=%.2f, %.1f',
+                              self._temp, self._ttemp)
+
+            # 温度履歴に追加
             self._temp_hist.add(self._temp, ts)
 
-            pid = self.pid()
-            if type(pid) == float:
-                pid = round(pid, 2)
-            self._logger.info('ts_str,_temp = %s, %s', ts_str, self._temp)
-            self._logger.info('_ttemp,pid   = %s, %s', self._ttemp, pid)
-
-            if pid is None:
-                continue
-
-            self._rtemp = round(self._ttemp + pid)
-            if self._rtemp > self.RTEMP_MAX:
-                self._rtemp = self.RTEMP_MAX
-            if self._rtemp < self.RTEMP_MIN:
-                self._rtemp = self.RTEMP_MIN
-            self._logger.debug('self._rtemp=%d', self._rtemp)
-
+            # パラメータの値を Node-RED に通知
             self._param_cl.send_param({
-                'active': self._on,
+                'active': self._aircon.is_on(),
                 'ttemp': self._ttemp,
+                'rtemp': self._rtemp,
                 'temp': self._temp,
             })
 
-            if not self._on:
-                self._logger.debug('_on=%s .. not active', self._on)
+            # エアコンのON/OFFチェック
+            if not self._aircon.is_on():
+                self._logger.info('_aircon is off .. do nothing')
                 continue
 
-            if self._aircon.set_temp(self._rtemp):
+            # PID制御の計算
+            pid = self.pid()
+            if type(pid) == float:
+                pid = round(pid, 2)
+            self._logger.info('pid=%s', pid)
+            if pid is None:
+                continue
+
+            # エアコンの温度設定
+            #   温度設定に関する制限事項(最大値、最低値、頻度など)に
+            #   関する処理は、_airconオブジェクト内で判断・処理され、
+            #   実際に設定された温度が返される。
+            rtemp = round(self._ttemp + pid)
+            self._logger.debug('rtemp=%d', rtemp)
+
+            rtemp = self._aircon.set_temp(rtemp)
+            self._logger.debug('rtemp=%s', rtemp)
+            if rtemp is not None:
+                self._rtemp = rtemp
                 self._param_cl.send_param({'rtemp': self._rtemp})
 
         self._active = False
@@ -402,17 +442,29 @@ class AutoAirconCmd(Cmd):
     #
     def cmd_q_on(self, args):
         self._logger.debug('args=%a', args)
-        self._on = True
+
         self._rtemp = round(self._ttemp)
-        self._param_cl.send_param({'active': self._on, 'rtemp': self._rtemp})
-        self._aircon.set_temp(self._rtemp, force=True)
+        self._i = 0
+
+        self._param_cl.send_param({
+            'active': self._aircon.is_on(),
+            'rtemp': self._rtemp
+        })
+
+        rtemp = self._aircon.set_temp(self._rtemp, force=True)
+        if rtemp is not None:
+            self._rtemp = rtemp
+
+        self._param_cl.send_param({
+            'active': self._aircon.is_on(),
+            'rtemp': self._rtemp
+        })
         return self.RC_OK, None
 
     def cmd_q_off(self, args):
         self._logger.debug('args=%a', args)
-        self._on = False
-        self._param_cl.send_param({'active': self._on})
-        self._aircon.set_temp(Aircon.TEMP_OFF, force=True)
+        self._aircon.off()
+        self._param_cl.send_param({'active': self._aircon.is_on()})
         return self.RC_OK, None
 
     def cmd_q_kp(self, args):
