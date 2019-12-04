@@ -199,6 +199,12 @@ Options:
 ```
 
 
+## ポート番号
+
+* 51001: IrSendCmdServer
+* 51002: AutoAirconServer
+
+
 ## References
 
 * [pigpio](http://abyz.me.uk/rpi/pigpio/)

@@ -22,7 +22,7 @@ class IrSendCmdClient(TcpCmdClient):
     CMD_NAME = IrSendCmd.CMD_NAME
 
     DEF_TIMEOUT = 3  # sec
-    
+
     def __init__(self, host=DEF_SVR_HOST, port=DEF_SVR_PORT, debug=False):
         """
         サーバーホスト、サーバーポートのデフォルト値を変えるためだけの定義

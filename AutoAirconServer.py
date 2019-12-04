@@ -20,6 +20,7 @@ from IrSendCmdClient import IrSendCmdClient
 import json
 import os
 import configparser
+import time
 
 from MyLogger import get_logger
 
@@ -151,6 +152,8 @@ class AutoAirconCmd(Cmd):
     RTEMP_MIN = 20
     RTEMP_MAX = 30
 
+    DEF_MIN_SET_TEMP_INTERVAL = 10  # sec
+
     TEMP_END = 0
 
     def __init__(self, init_param=None, debug=False):
@@ -161,7 +164,7 @@ class AutoAirconCmd(Cmd):
         # コマンド追加
         self.add_cmd('on', None, self.cmd_q_on, 'Auto control ON')
         self.add_cmd('off', None, self.cmd_q_off, 'Auto control OFF')
-        
+
         self.add_cmd('kp', None, self.cmd_q_kp, 'get and set kp')
         self.add_cmd('ki', None, self.cmd_q_ki, 'get and set ki')
         self.add_cmd('kd', None, self.cmd_q_kd, 'get and set kd')
@@ -195,6 +198,7 @@ class AutoAirconCmd(Cmd):
         self._rtemp = round(self._ttemp)
 
         self._on = True
+        self._min_set_temp_interval = self.DEF_MIN_SET_TEMP_INTERVAL
 
         self._bbt = Beebotte(self._temp_topic, debug=False)
         self._aircon = Aircon(aircon_dev, aircon_bhdr, ir_host,
@@ -210,6 +214,8 @@ class AutoAirconCmd(Cmd):
 
         self._bbt.start()
         self._bbt.subscribe()
+
+        ts_set_temp = 0
 
         while self._active:
             msg_type, msg_data = self._bbt.wait_msg(self._bbt.MSG_DATA)
@@ -256,6 +262,14 @@ class AutoAirconCmd(Cmd):
                 self._logger.debug('_on=%s .. not active', self._on)
                 continue
 
+            ts_now = time.time()
+            interval = ts_now - ts_set_temp
+            if interval < self._min_set_temp_interval:
+                self._logger.info('_rtemp=%s, interval=%.1f < %s .. skip',
+                                  self._rtemp,
+                                  interval, self._min_set_temp_interval)
+                continue
+            ts_set_temp = ts_now
             self._aircon.set_temp(self._rtemp)
 
         self._active = False
@@ -413,7 +427,7 @@ class AutoAirconCmd(Cmd):
             self._logger.error(msg)
             return self.RC_NG, msg
 
-        return self.RC_OK, self._kp            
+        return self.RC_OK, self._kp
 
     def cmd_q_ki(self, args):
         self._logger.debug('args=%a', args)
@@ -445,7 +459,7 @@ class AutoAirconCmd(Cmd):
             self._logger.error(msg)
             return self.RC_NG, msg
 
-        return self.RC_OK, self._kd            
+        return self.RC_OK, self._kd
 
     def cmd_q_temp(self, args):
         self._logger.debug('args=%a', args)

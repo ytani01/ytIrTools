@@ -11,6 +11,7 @@ __date__   = '2019'
 
 from TcpCmdServer import Cmd, CmdServerApp
 from IrSend import IrSend
+import time
 
 from MyLogger import get_logger
 
@@ -82,6 +83,18 @@ class IrSendCmd(Cmd):
         #
         # len(args) >= 3
         #
+        if args[2].startswith('@'):
+            # interval
+            try:
+                interval = float(args[2][1:])
+            except Exception as e:
+                msg = '%s:%s' % (type(e), e)
+                self._logger.error(msg)
+                return self.RC_NG, msg
+            self._logger.debug('interval=%s', interval)
+            time.sleep(interval)
+            return self.RC_OK, 'sleep %s sec' % interval
+
         if args[2] not in m_and_b['buttons']:
             msg = '%s:%s: no such button' % (args[1], args[2])
             self._logger.error(msg)
