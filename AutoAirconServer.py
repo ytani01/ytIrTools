@@ -437,6 +437,7 @@ class AutoAirconCmd(Cmd):
         if len(args) == 1:
             return self.RC_OK, self._ki
 
+        self._i = 0
         try:
             self._ki = float(args[1])
             self._param_cl.send_param({'ki': self._ki})
@@ -477,9 +478,9 @@ class AutoAirconCmd(Cmd):
         if len(args) == 1:
             return self.RC_OK, self._ttemp
 
+        self._i = 0
         try:
             self._ttemp = float(args[1])
-            self._i = 0
             self._param_cl.send_param({'ttemp': self._ttemp})
         except Exception as e:
             msg = '%s:%s' % (type(e), e)
