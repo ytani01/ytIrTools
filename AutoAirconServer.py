@@ -31,13 +31,6 @@ class ParamClient(TcpCmdClient):
 
     DEF_TIMEOUT = 2  # sec
 
-    def __init__(self, host=DEF_SVR_HOST, port=DEF_SVR_PORT, debug=False):
-        self._debug = debug
-        self._logger = get_logger(__class__.__name__, self._debug)
-        self._logger.debug('host=%s, port=%s', host, port)
-
-        super().__init__(host, port, self._debug)
-
     def send_param(self, param):
         self._logger.debug('param=%s', param)
 
@@ -58,7 +51,7 @@ class Aircon(IrSendCmdClient):
     RTEMP_MIN = 20
     RTEMP_MAX = 30
 
-    DEF_MIN_SET_TEMP_INTERVAL = 10  # sec
+    DEF_MIN_SET_TEMP_INTERVAL = 15  # sec
 
     BUTTON_OFF = 'off'
 
@@ -216,7 +209,9 @@ class AutoAirconCmd(Cmd):
 
         # サーバー独自の設定
         cfg = self.load_conf()
-        self._logger.debug('cfg=%s', list(cfg))
+        self._logger.debug('cfg=%s', cfg)
+        if cfg is None:
+            raise RuntimeError('load_conf(): failed')
 
         ir_host = cfg.get('ir', 'host')
         aircon_dev = cfg.get('aircon', 'dev_name')
@@ -228,7 +223,6 @@ class AutoAirconCmd(Cmd):
         self._kp = cfg.getfloat('auto_aircon', 'kp')
         self._ki = cfg.getfloat('auto_aircon', 'ki')
         self._kd = cfg.getfloat('auto_aircon', 'kd')
-        self._ki_i_max = cfg.getfloat('auto_aircon', 'ki_i_max')
 
         self._i = 0
 
@@ -335,12 +329,12 @@ class AutoAirconCmd(Cmd):
     #
     # config file
     #
-    def find_conf(self):
-        self._logger.debug('')
+    def find_conf(self, fname=CONF_FILENAME, path=CONF_PATH):
+        self._logger.debug('fname=%s, path=%s', fname, path)
 
-        for dir in self.CONF_PATH:
-            for fname in self.CONF_FILENAME:
-                pathname = dir + '/' + fname
+        for d in path:
+            for f in fname:
+                pathname = d + '/' + f
                 self._logger.debug('pathname=%s', pathname)
                 if self.is_readable(pathname):
                     return pathname
@@ -357,10 +351,10 @@ class AutoAirconCmd(Cmd):
             return False
         return True
 
-    def load_conf(self):
-        self._logger.debug('')
+    def load_conf(self, fname=CONF_FILENAME, path=CONF_PATH):
+        self._logger.debug('fname=%s, path=%s', fname, path)
 
-        conf_file = self.find_conf()
+        conf_file = self.find_conf(fname, path)
         self._logger.debug('conf_file=%s', conf_file)
         if conf_file is None:
             return None
@@ -369,11 +363,12 @@ class AutoAirconCmd(Cmd):
         try:
             cfg.read(conf_file)
         except Exception as e:
-            self._logger.warning('%s:%s', type(e), e)
+            self._logger.error('%s:%s', type(e), e)
+            return None
 
         for s in cfg:
             for p in cfg[s]:
-                self._logger.debug('%s:%s:%s', s, p, cfg[s][p])
+                self._logger.debug('  %s: %s: %s', s, p, cfg[s][p])
 
         return cfg
 
@@ -560,7 +555,6 @@ class AutoAirconCmd(Cmd):
         return self.RC_OK, self._rtemp
 
 
-#####
 import click
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
