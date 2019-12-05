@@ -1,6 +1,7 @@
 [aircon]
 dev_name = aircon
 button_header = on_hot_auto_
+interval_min = 30
 
 [ir]
 host = localhost
@@ -13,7 +14,8 @@ topic = env1/temp
 topic = aircon1/param
 kp = 4
 ki = 0.03
-kd = 450
+kd = 500
+ki_i_max = 5.0
 
 [param]
 host = localhost

@@ -51,22 +51,22 @@ class Aircon(IrSendCmdClient):
     RTEMP_MIN = 20
     RTEMP_MAX = 30
 
-    DEF_MIN_SET_TEMP_INTERVAL = 15  # sec
+    INTERVAL_MIN = 30  # set_temp interval sec
 
     BUTTON_OFF = 'off'
 
     def __init__(self, dev=DEF_DEV, bhdr=DEF_BHDR, ir_host=DEF_IR_HOST,
-                 debug=False):
+                 interval_min=INTERVAL_MIN, debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
-        self._logger.debug('dev=%s, bhdr=%s, ir_host=%s',
-                           dev, bhdr, ir_host)
+        self._logger.debug('dev=%s, bhdr=%s, ir_host=%s, interval_min=%s',
+                           dev, bhdr, ir_host, interval_min)
 
         self._dev = dev
         self._bhdr = bhdr
         self._rtemp = self.RTEMP_MIN
         self._ts_set_temp = 0
-        self._min_set_temp_interval = self.DEF_MIN_SET_TEMP_INTERVAL
+        self._interval_min = interval_min
         self._on = False
 
         super().__init__(ir_host, debug=self._debug)
@@ -108,9 +108,9 @@ class Aircon(IrSendCmdClient):
 
         ts_now = time.time()
         interval = ts_now - self._ts_set_temp
-        if not force and interval < self._min_set_temp_interval:
+        if not force and interval < self._interval_min:
             self._logger.info('rtemp=%s, interval=%.1f < %s .. ignored',
-                              rtemp, interval, self._min_set_temp_interval)
+                              rtemp, interval, self._interval_min)
             return None
 
         button = self._bhdr + '%02d' % rtemp
@@ -209,13 +209,13 @@ class AutoAirconCmd(Cmd):
 
         # サーバー独自の設定
         cfg = self.load_conf()
-        self._logger.debug('cfg=%s', cfg)
         if cfg is None:
             raise RuntimeError('load_conf(): failed')
 
         ir_host = cfg.get('ir', 'host')
         aircon_dev = cfg.get('aircon', 'dev_name')
         aircon_bhdr = cfg.get('aircon', 'button_header')
+        aircon_interval_min = cfg.getfloat('aircon', 'interval_min')
         param_host = cfg.get('param', 'host')
         param_port = cfg.getint('param', 'port')
 
@@ -223,15 +223,18 @@ class AutoAirconCmd(Cmd):
         self._kp = cfg.getfloat('auto_aircon', 'kp')
         self._ki = cfg.getfloat('auto_aircon', 'ki')
         self._kd = cfg.getfloat('auto_aircon', 'kd')
+        self._ki_i_max = cfg.getfloat('auto_aircon', 'ki_i_max')
 
         self._i = 0
+        self._prev_i = 0
 
         self._ttemp = self.DEF_TTEMP
         self._rtemp = round(self._ttemp)
         self._temp = self._ttemp
 
         self._bbt = Beebotte(self._temp_topic, debug=False)
-        self._aircon = Aircon(aircon_dev, aircon_bhdr, ir_host,
+        self._aircon = Aircon(aircon_dev, aircon_bhdr,
+                              ir_host, aircon_interval_min,
                               debug=self._debug)
         self._temp_hist = TempHist(debug=self._debug)
         self._param_cl = ParamClient(param_host, param_port, debug=self._debug)
@@ -387,6 +390,12 @@ class AutoAirconCmd(Cmd):
 
         kp_p = -self._kp * p_
         ki_i = -self._ki * i_
+        if abs(ki_i) > self._ki_i_max:
+            self._logger.warning('abs(ki_i)=%.1f > %.1f',
+                                 abs(ki_i), self._ki_i_max)
+            ki_i = ki_i / abs(ki_i) * self._ki_i_max
+            self._i = self._prev_i
+            self._logger.warning('ki_i=%.1f, self._i=%.1f ', ki_i, self._i)
         kd_d = -self._kd * d_
         self._logger.debug('(kp_p,ki_i,kd_d)=(%s,%s,%s)', kp_p, ki_i, kd_d)
 
@@ -406,6 +415,7 @@ class AutoAirconCmd(Cmd):
 
     def i(self):
         if self._temp_hist.len() < 2:
+            self._logger.debug('None')
             return None
 
         v_cur = self._temp_hist.get(-1)
@@ -413,12 +423,14 @@ class AutoAirconCmd(Cmd):
 
         d_ts = v_cur['ts'] - v_prev['ts']
         d_i = (v_cur['temp'] + v_prev['temp']) * d_ts / 2 - self._ttemp * d_ts
+        self._prev_i = self._i
         self._i += d_i
-        self._logger.debug('self._i=%s', self._i)
+        self._logger.debug('_i=%s, _prev_i=%s', self._i, self._prev_i)
         return self._i
 
     def d(self):
         if self._temp_hist.len() < 2:
+            self._logger.debug('None')
             return None
 
         v_cur = self._temp_hist.get(-1)
@@ -427,6 +439,7 @@ class AutoAirconCmd(Cmd):
         d_temp = v_cur['temp'] - v0['temp']
         d_ts = v_cur['ts'] - v0['ts']
         if d_ts == 0.0:
+            self._logger.debug('None')
             return None
         d_ = d_temp / d_ts
         self._logger.debug('d_=%.4f', d_)
@@ -517,13 +530,15 @@ class AutoAirconCmd(Cmd):
         if self._temp_hist.len() == 0:
             return self.RC_NG, 'no temp data'
 
-        return self.RC_OK, self._temp_hist.get(-1)['temp']
+        msg = 'temp=%s' % self._temp_hist.get(-1)['temp']
+        return self.RC_OK, msg
 
     def cmd_q_ttemp(self, args):
         self._logger.debug('args=%a', args)
 
         if len(args) == 1:
-            return self.RC_OK, self._ttemp
+            msg = 'ttemp=%s' % self._ttemp
+            return self.RC_OK, msg
 
         self._i = 0
         try:
@@ -534,25 +549,32 @@ class AutoAirconCmd(Cmd):
             self._logger.error(msg)
             return self.RC_NG, msg
 
-        return self.RC_OK, self._ttemp
+        msg = 'ttemp=%s' % self._ttemp
+        return self.RC_OK, msg
 
     def cmd_q_rtemp(self, args):
         self._logger.debug('args=%a', args)
 
         if len(args) == 1:
-            return self.RC_OK, self._rtemp
+            msg = 'rtemp=%s' % self._rtemp
+            return self.RC_OK, msg
 
         try:
-            self._rtemp = round(float(args[1]))
-            self._param_cl.send_param({'rtemp': self._rtemp})
+            rtemp = round(float(args[1]))
+            rtemp = self._aircon.set_temp(rtemp, force=True)
         except Exception as e:
             msg = '%s:%s' % (type(e), e)
             self._logger.error(msg)
             return self.RC_NG, msg
 
-        self._aircon.set_temp(self._rtemp)
+        if rtemp is None:
+            msg = '_aircon.set_temp(): failed'
+            return self.RC_NG, msg
 
-        return self.RC_OK, self._rtemp
+        self._rtemp = rtemp
+        self._param_cl.send_param({'rtemp': self._rtemp})
+        msg = 'rtemp=%s' % self._rtemp
+        return self.RC_OK, msg
 
 
 import click
