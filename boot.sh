@@ -36,15 +36,19 @@ while [ `/sbin/ifconfig -a | grep inet | grep -v inet6 | grep -v 127.0.0 | wc -l
 done
 
 if [ X$PID_IRSENDSERVER = X ]; then
-    mv -f ${LOG_IRSENDSERVER} ${LOG_IRSENDSERVER}.1
-    ts_echo "start ${NAME_IRSENDSERVER}"
-    ${HOME}/bin/${NAME_IRSENDSERVER}.py > ${LOG_IRSENDSERVER} 2>&1 &
+    if [ -x ${HOME}/bin/${NAME_IRSENDSERVER}.py ]; then
+	mv -f ${LOG_IRSENDSERVER} ${LOG_IRSENDSERVER}.1
+	ts_echo "start ${NAME_IRSENDSERVER}"
+	${HOME}/bin/${NAME_IRSENDSERVER}.py > ${LOG_IRSENDSERVER} 2>&1 &
+    fi
 fi
 
 if [ X$PID_AUTOAIRCON = X ]; then
-    mv -f ${LOG_AUTOAIRCON} ${LOG_AUTOAIRCON}.1
-    ts_echo "start ${NAME_AUTOAIRCON}"
-    ${HOME}/bin/${NAME_AUTOAIRCON}.py > ${LOG_AUTOAIRCON} 2>&1 &
+    if [ -x ${HOME}/bin/${NAME_AUTOAIRCON}.py ]; then
+	mv -f ${LOG_AUTOAIRCON} ${LOG_AUTOAIRCON}.1
+	ts_echo "start ${NAME_AUTOAIRCON}"
+	${HOME}/bin/${NAME_AUTOAIRCON}.py > ${LOG_AUTOAIRCON} 2>&1 &
+    fi
 fi
 
 ts_echo "< ${MYNAME}: end"
