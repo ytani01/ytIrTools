@@ -51,7 +51,7 @@ class Aircon(IrSendCmdClient):
     RTEMP_MIN = 20
     RTEMP_MAX = 30
 
-    INTERVAL_MIN = 30  # set_temp interval sec
+    INTERVAL_MIN = 60  # set_temp interval sec
 
     BUTTON_OFF = 'off'
 
@@ -187,6 +187,10 @@ class AutoAirconCmd(Cmd):
     DEF_TTEMP = 26
 
     TEMP_END = 0
+
+    COEFF_P = 1.0
+    COEFF_I = 0.01
+    COEFF_D = 100
 
     def __init__(self, init_param=None, debug=False):
         self._debug = debug
@@ -389,6 +393,7 @@ class AutoAirconCmd(Cmd):
             return None
 
         kp_p = -self._kp * p_
+
         ki_i = -self._ki * i_
         if abs(ki_i) > self._ki_i_max:
             self._logger.warning('abs(ki_i)=%.1f > %.1f',
@@ -396,7 +401,9 @@ class AutoAirconCmd(Cmd):
             ki_i = ki_i / abs(ki_i) * self._ki_i_max
             self._i = self._prev_i
             self._logger.warning('ki_i=%.1f, self._i=%.1f ', ki_i, self._i)
+
         kd_d = -self._kd * d_
+
         self._logger.debug('(kp_p,ki_i,kd_d)=(%s,%s,%s)', kp_p, ki_i, kd_d)
 
         pid = kp_p + ki_i + kd_d
@@ -410,6 +417,7 @@ class AutoAirconCmd(Cmd):
 
     def p(self):
         p_ = self._temp_hist.ave() - self._ttemp
+        p_ = p_ * self.COEFF_P
         self._logger.debug('p_=%.2f', p_)
         return p_
 
@@ -424,7 +432,7 @@ class AutoAirconCmd(Cmd):
         d_ts = v_cur['ts'] - v_prev['ts']
         d_i = (v_cur['temp'] + v_prev['temp']) * d_ts / 2 - self._ttemp * d_ts
         self._prev_i = self._i
-        self._i += d_i
+        self._i += d_i * self.COEFF_I
         self._logger.debug('_i=%s, _prev_i=%s', self._i, self._prev_i)
         return self._i
 
@@ -441,7 +449,7 @@ class AutoAirconCmd(Cmd):
         if d_ts == 0.0:
             self._logger.debug('None')
             return None
-        d_ = d_temp / d_ts
+        d_ = d_temp / d_ts * self.COEFF_D
         self._logger.debug('d_=%.4f', d_)
         return d_
 
