@@ -414,7 +414,8 @@ class IrAnalyze:
 
         json_str = '[\n'
         for dev_data in dev_list:
-            json_str += '''{
+            json_str += """
+{
   "comment": %s,
   "dev_name": %s,
   "format":   %s,
@@ -439,8 +440,7 @@ class IrAnalyze:
   }
 }
 ,
-''' % (json.dumps(dev_data['comment']),
-       json.dumps(dev_data['dev_name']),
+""" % (json.dumps(dev_data['comment']), json.dumps(dev_data['dev_name']),
        json.dumps(dev_data['format']),
        dev_data['T'],
        dev_data['sym_tbl']['-'],

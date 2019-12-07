@@ -178,7 +178,7 @@ class IrRecv:
             if self.raw_data == [] and interval < self.LEADER_MIN_USEC:
                 self.set_watchdog(self.WATCHDOG_CANCEL)
                 self._logger.debug('%d: leader is too short .. ignored',
-                                  interval)
+                                   interval)
                 return
             else:
                 self.raw_data.append([interval])

@@ -46,9 +46,9 @@ class SampleCmd(Cmd):
 
         if len(args) < 2:
             return self.RC_NG, "error"
-        
+
         ret = self._count * float(args[1])
-        
+
         return self.RC_OK, ret
 
     def main(self):
