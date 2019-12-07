@@ -65,8 +65,10 @@ class IrSendCmd(Cmd):
         #
         if args[1].startswith('@'):
             if args[1] == self.SUBCMD['LOAD']:
-                self._irsend.reload_conf()
-                self._logger.debug('%s', self._irsend.irconf.data)
+                msg = self._irsend.reload_conf()
+                if msg != self._irsend.MSG_OK:
+                    self._logger.error(msg)
+                    return self.RC_NG, msg
                 return self.RC_OK, 'reload config data'
             else:
                 return self.RC_NG, '%s: no such command' % args[1]

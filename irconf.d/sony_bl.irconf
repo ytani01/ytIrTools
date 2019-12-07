@@ -2,7 +2,7 @@
   "comment": "Sony blueray recorder",
   "dev_name": ["sony_bl", "bl"],
   "format":   "SONY",
-  "T":        598.750000,
+  "T":        597,
   "sym_tbl": {
     "-":      [[4, 1]],
     "=":      [],
@@ -57,7 +57,9 @@
     "up":      "[prefix] 100 1110 [suffix]",
     "down":    "[prefix] 010 1110 [suffix]",
     "left":    "[prefix] 110 1110 [suffix]",
+    "left-long": ["[prefix] 110 1110 [suffix]", 35],
     "right":   "[prefix] 001 1110 [suffix]",
+    "right-long": ["[prefix] 001 1110 [suffix]", 35],
 
     "option":  "[prefix] 111 1110 [suffix]",
 

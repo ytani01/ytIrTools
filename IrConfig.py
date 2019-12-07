@@ -70,6 +70,8 @@ class IrConfig:
                     str(Path.home()) + '/.irconf.d',
                     '/etc/irconf.d']
 
+    MSG_OK = 'OK'
+
     def __init__(self, conf_dir=DEF_CONF_DIR, load_all=False, debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
@@ -130,7 +132,9 @@ class IrConfig:
         syms: str
           ex. '-0101..0101/*/'
 
-        '': error
+        button_rep: int
+
+        None, None: error
 
         """
         self._logger.debug('dev_data=%s, button_name=%s',
@@ -166,9 +170,11 @@ class IrConfig:
         except KeyError:
             self._logger.warning('no macro')
 
+        """
         # 繰り返し回数展開
         button_str = button_str * button_rep
         self._logger.debug('button_str=%s', button_str)
+        """
 
         # スペース削除
         button_str = button_str.replace(' ', '')
@@ -210,12 +216,13 @@ class IrConfig:
         syms = ''.join(s_list2)
         self._logger.debug('syms=%s', syms)
 
-        return syms
+        return syms, button_rep
 
     def get_raw_data(self, dev_name, button_name):
         """
         デバイス情報を取得して、
-        指定されたボタンの[pulse, space] のリストを返す。
+        指定されたボタンの[pulse, space] のリストと
+        繰り返し回数を返す。
 
         Parameters
         ----------
@@ -227,7 +234,9 @@ class IrConfig:
         raw_data: list
           [[p1, s1], [p2, s2], .. ]
 
-        []: error
+        repeat: int
+
+        None, None: error
 
         """
         self._logger.debug('dev_name=%s, button_name=%s',
@@ -239,17 +248,17 @@ class IrConfig:
         dev = self.get_dev(dev_name)
         if dev is None:
             self._logger.error('\'%s\': no such device', dev_name)
-            return []
+            return None, None
         dev_data = dev['data']
         self._logger.debug('dev_data=%s', dev_data)
 
         #
         # ボタンデータをシンボル文字列に変換
         #
-        syms = self.button2syms(dev_data, button_name)
-        self._logger.debug('syms=%s', syms)
-        if syms == '':
-            return []
+        syms, repeat = self.button2syms(dev_data, button_name)
+        self._logger.debug('syms=%s, repeat=%s', syms, repeat)
+        if syms is None:
+            return None, None
 
         #
         # make pulse,space list (raw_data)
@@ -265,7 +274,7 @@ class IrConfig:
             raw_data.append([pulse * t, space * t])
         self._logger.debug('raw_data=%s', raw_data)
 
-        return raw_data
+        return raw_data, repeat
 
     def get_dev(self, dev_name):
         """
@@ -304,9 +313,20 @@ class IrConfig:
         return None
 
     def reload_all(self):
+        """
+        全てのirconfファイルを再読み込みする。
+        既存のデータは消去される。
+
+        Returns
+        -------
+        msg: str
+          error message
+          MSG_OK: success
+        """
         self._logger.debug('')
         self.data = []
-        self.load_all()
+        msg = self.load_all()
+        return msg
 
     def load_all(self):
         """
@@ -314,10 +334,13 @@ class IrConfig:
 
         Returns
         -------
-        self.data: dict
-
+        msg: str
+          error message
+          MSG_OK: success
         """
         self._logger.debug('')
+
+        rep_msg = self.MSG_OK
 
         files = []
         for d in self.conf_dir:
@@ -327,44 +350,12 @@ class IrConfig:
         self._logger.debug('files=%s', files)
 
         for f in files:
-            if self.load(f) is None:
-                self._logger.error('%s: loading failed', f)
+            msg = self.load(f)
+            if msg != self.MSG_OK:
+                rep_msg = msg
+                self._logger.error(msg)
 
-        return self.data
-
-    def load_json_dump(self, file_name):
-        """ [現在は不要 ?]
-        ``file_name``から読み込んだ不完全な JSONリストを修正して、
-        JSONパーサーが読めるようにする。
-
-        "{data1}, {data2}," -> "[ {data1}, {data2} ]"
-
-        Parameters
-        ----------
-        file_name: str
-
-        """
-        self._logger.debug('file_name=%s', file_name)
-
-        with open(file_name, 'r') as f:
-            line = f.readlines()
-
-        if line[0].split()[0] != '{' or line[-1].split()[0] != ',':
-            self._logger.debug('invalid json.dump file: %s', file_name)
-            return None
-
-        line.pop(-1)
-        line.insert(0, '[')
-        line.append(']')
-        s = ''.join(line)
-        self._logger.debug(s)
-        try:
-            data = json.loads(s)
-        except Exception as e:
-            self._logger.debug('%s:%s.', type(e), e)
-            return None
-        self._logger.debug('data=%s', data)
-        return data
+        return rep_msg
 
     def load(self, file_name):
         """
@@ -372,23 +363,27 @@ class IrConfig:
 
         Returns
         -------
-        self.data: dict
+        msg: str
+          error message
+          MSG_OK: success
 
         """
         self._logger.debug('file_name=%s', file_name)
+
+        msg = self.MSG_OK
 
         try:
             with open(file_name, 'r') as f:
                 data = json.load(f)
                 self._logger.debug('data=%s', json.dumps(data))
         except json.JSONDecodeError as e:
-            data = self.load_json_dump(file_name)
-            if data is None:
-                self._logger.error('%s: %s, %s', file_name, type(e), e)
-                return None
+            msg = '%s: %s, %s' % (file_name, type(e), e)
+            self._logger.error(msg)
+            return msg
         except Exception as e:
-            self._logger.error('%s, %s', type(e), e)
-            return None
+            msg = '%s, %s' % (type(e), e)
+            self._logger.error(msg)
+            return msg
 
         if type(data) == list:
             for d in data:
@@ -399,7 +394,7 @@ class IrConfig:
             self.data.append(data_ent)
         self._logger.debug('data=%s', self.data)
 
-        return self.data
+        return msg
 
     def save(self, file_name=None):
         self._logger.debug('file_name=%s', file_name)
@@ -423,12 +418,14 @@ class App:
         self._logger.debug('irconf=%s', irconf)
 
         if len(conf_file) == 0:
-            if irconf.load_all() is None:
-                self._logger.error('loading failed')
+            msg = irconf.load_all()
+            if msg != IrConfig.MSG_OK:
+                self._logger.error(msg)
                 return
         else:
-            if irconf.load(conf_file) is None:
-                self._logger.error('\'%s\': loading faild', conf_file)
+            msg = irconf.load(conf_file)
+            if msg != IrConfig.MSG_OK:
+                self._logger.error(msg)
                 return
 
         conf_data_ent = irconf.get_dev(dev_name)

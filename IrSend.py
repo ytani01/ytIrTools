@@ -142,6 +142,8 @@ class IrSend:
 
     SIG_BITS_MIN = 5
 
+    MSG_OK = IrConfig.MSG_OK
+
     def __init__(self, pin=DEF_PIN, load_conf=False, debug=False):
         self._debug = debug
         self.logger = get_logger(__class__.__name__, debug)
@@ -165,7 +167,8 @@ class IrSend:
 
     def reload_conf(self):
         self.logger.debug('')
-        self.irconf.reload_all()
+        msg = self.irconf.reload_all()
+        return msg
 
     def clean_wave(self):
         self.logger.debug('')
@@ -235,14 +238,16 @@ class IrSend:
 
         return self.space_wave_hash[usec]
 
-    def send_raw_data(self, raw_data):
+    def send_raw_data(self, raw_data, repeat=1):
         """
         Parameters
         ----------
         raw_data: list
           [[pulse1, space1], [pulse2, space2], .. ]
+
+        repeat: int
         """
-        self.logger.debug('raw_data=%s', raw_data)
+        self.logger.debug('raw_data=%s, repeat=%s', raw_data, repeat)
 
         if len(raw_data) <= self.SIG_BITS_MIN:
             if len(raw_data) == 0:
@@ -261,18 +266,12 @@ class IrSend:
             w.append(self.create_space_wave(space))
         self.logger.debug('total_us: %d', total_us)
 
-        self.pi.wave_chain(w)
-        """
-        sleep_sec = (total_us / 1000.0 / 1000.0) + 0.5
-        self.logger.debug('sleep_sec: %f', sleep_sec)
-        time.sleep(sleep_sec)
-        """
-        wait_tick = ''
-        while self.pi.wave_tx_busy():
-            wait_tick += '*'
-            time.sleep(0.01)
-        self.logger.debug('wait_tick: %s', wait_tick)
-        time.sleep(0.1)
+        for i in range(repeat):
+            self.pi.wave_chain(w)
+
+            while self.pi.wave_tx_busy():
+                time.sleep(0.01)
+            time.sleep(0.005)
 
         self.clean_wave()
 
@@ -287,13 +286,10 @@ class IrSend:
                 self.logger.error('loading config files: failed')
                 return False
 
-        raw_data = self.irconf.get_raw_data(dev_name, button_name)
-        if raw_data == []:
+        raw_data, repeat = self.irconf.get_raw_data(dev_name, button_name)
+        if raw_data is None:
             return False
-        if type(raw_data[0]) == str:
-            self.logger.error(raw_data[0])
-            return False
-        return self.send_raw_data(raw_data)
+        return self.send_raw_data(raw_data, repeat)
 
     def get_dev_list(self):
         self.logger.debug('')
