@@ -290,6 +290,10 @@ class AutoAirconCmd(Cmd):
                 'ttemp': self._ttemp,
                 'rtemp': self._rtemp,
                 'temp': self._temp,
+                'kp': self._kp,
+                'ki': self._ki,
+                'kd': self._kd,
+                'interval_min': self._aircon._interval_min
             })
 
             # エアコンのON/OFFチェック
