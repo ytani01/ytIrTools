@@ -51,7 +51,7 @@ class Aircon(IrSendCmdClient):
     RTEMP_MIN = 20
     RTEMP_MAX = 30
 
-    INTERVAL_MIN = 60  # set_temp interval sec
+    INTERVAL_MIN = 40  # set_temp interval sec
 
     BUTTON_OFF = 'off'
 
@@ -210,6 +210,9 @@ class AutoAirconCmd(Cmd):
                      'get and set target temp')
         self.add_cmd('ttemp', None, self.cmd_q_ttemp,
                      'get and set remocon temp')
+
+        self.add_cmd('interval_min', None, self.cmd_q_interval_min,
+                     'interval_min')
 
         # サーバー独自の設定
         cfg = self.load_conf()
@@ -497,7 +500,7 @@ class AutoAirconCmd(Cmd):
             self._logger.error(msg)
             return self.RC_NG, msg
 
-        return self.RC_OK, self._kp
+        return self.cmd_q_kp([''])
 
     def cmd_q_ki(self, args):
         self._logger.debug('args=%a', args)
@@ -514,7 +517,7 @@ class AutoAirconCmd(Cmd):
             self._logger.error(msg)
             return self.RC_NG, msg
 
-        return self.RC_OK, self._ki
+        return self.cmd_q_ki([''])
 
     def cmd_q_kd(self, args):
         self._logger.debug('args=%a', args)
@@ -530,7 +533,7 @@ class AutoAirconCmd(Cmd):
             self._logger.error(msg)
             return self.RC_NG, msg
 
-        return self.RC_OK, self._kd
+        return self.cmd_q_kd([''])
 
     def cmd_q_temp(self, args):
         self._logger.debug('args=%a', args)
@@ -538,15 +541,13 @@ class AutoAirconCmd(Cmd):
         if self._temp_hist.len() == 0:
             return self.RC_NG, 'no temp data'
 
-        msg = 'temp=%s' % self._temp_hist.get(-1)['temp']
-        return self.RC_OK, msg
+        return self.RC_OK, self._temp_hist.get(-1)['temp']
 
     def cmd_q_ttemp(self, args):
         self._logger.debug('args=%a', args)
 
         if len(args) == 1:
-            msg = 'ttemp=%s' % self._ttemp
-            return self.RC_OK, msg
+            return self.RC_OK, self._ttemp
 
         self._i = 0
         try:
@@ -557,8 +558,7 @@ class AutoAirconCmd(Cmd):
             self._logger.error(msg)
             return self.RC_NG, msg
 
-        msg = 'ttemp=%s' % self._ttemp
-        return self.RC_OK, msg
+        return self.cmd_q_ttemp([''])
 
     def cmd_q_rtemp(self, args):
         self._logger.debug('args=%a', args)
@@ -581,8 +581,23 @@ class AutoAirconCmd(Cmd):
 
         self._rtemp = rtemp
         self._param_cl.send_param({'rtemp': self._rtemp})
-        msg = 'rtemp=%s' % self._rtemp
-        return self.RC_OK, msg
+
+        return self.cmd_q_rtemp([''])
+
+    def cmd_q_interval_min(self, args):
+        self._logger.debug('args=%a', args)
+
+        if len(args) == 1:
+            return self.RC_OK, self._aircon._interval_min
+
+        try:
+            self._aircon._interval_min = float(args[1])
+        except Exception as e:
+            msg = '%s:%s' % (type(e), e)
+            self._logger.error(msg)
+            return self.RC_NG, msg
+
+        return self.cmd_q_interval_min([''])
 
 
 import click
