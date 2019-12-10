@@ -11,11 +11,12 @@ port = 51001
 topic = env1/temp
 
 [auto_aircon]
+ttemp = 26.5
 topic = aircon1/param
-kp = 6
-ki = 4.5
-kd = 7
-ki_i_max = 5.0
+kp = 5.0
+ki = 4.0
+kd = 5.5
+ki_i_max = 10.0
 
 [param]
 host = localhost

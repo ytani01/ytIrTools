@@ -67,6 +67,7 @@ class Aircon(IrSendCmdClient):
         self._rtemp = self.RTEMP_MIN
         self._ts_set_temp = 0
         self._interval_min = interval_min
+        self._interval_min_count = 0
         self._on = False
 
         super().__init__(ir_host, debug=self._debug)
@@ -109,9 +110,15 @@ class Aircon(IrSendCmdClient):
         ts_now = time.time()
         interval = ts_now - self._ts_set_temp
         if not force and interval < self._interval_min:
-            self._logger.info('rtemp=%s, interval=%.1f < %s .. ignored',
-                              rtemp, interval, self._interval_min)
-            return None
+            self._interval_min_count += 1
+            if self._interval_min_count < 2:
+                self._logger.info('rtemp=%s, interval=%.1f < %s .. ignored',
+                                  rtemp, interval, self._interval_min)
+                return None
+            else:
+                self._logger.info('_interval_min_count=%d',
+                                  self._interval_min_count)
+        self._interval_min_count = 0
 
         button = self._bhdr + '%02d' % rtemp
         args = [self._dev, button]
@@ -227,6 +234,7 @@ class AutoAirconCmd(Cmd):
         param_port = cfg.getint('param', 'port')
 
         self._temp_topic = cfg.get('temp', 'topic')
+        self._ttemp = cfg.getfloat('auto_aircon', 'ttemp')
         self._kp = cfg.getfloat('auto_aircon', 'kp')
         self._ki = cfg.getfloat('auto_aircon', 'ki')
         self._kd = cfg.getfloat('auto_aircon', 'kd')
@@ -235,7 +243,6 @@ class AutoAirconCmd(Cmd):
         self._i = 0
         self._prev_i = 0
 
-        self._ttemp = self.DEF_TTEMP
         self._rtemp = round(self._ttemp)
         self._temp = self._ttemp
 
@@ -256,6 +263,17 @@ class AutoAirconCmd(Cmd):
         self._bbt.subscribe()
 
         self._aircon.on()
+
+        self._param_cl.send_param({
+            'active': self._aircon.is_on(),
+            'ttemp': self._ttemp,
+            'rtemp': self._rtemp,
+            'temp': self._temp,
+            'kp': self._kp,
+            'ki': self._ki,
+            'kd': self._kd,
+            'interval_min': self._aircon._interval_min
+        })
 
         while self._active:
             # BeebotteからMQTTで温度を取得
