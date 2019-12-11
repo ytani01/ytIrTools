@@ -4,7 +4,7 @@ ttemp = 26.0
 topic = aircon1/param
 kp = 5.5
 ki = 5.5
-kd = 5.5
+kd = 7.0
 ki_i_max = 10.0
 
 [temp]
