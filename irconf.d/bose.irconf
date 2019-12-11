@@ -1,0 +1,30 @@
+{
+  "comment": "BOSE Speaker",
+  "dev_name": ["bose", "bose_speaker"],
+  "format":   "BOSE",
+  "T":        498,
+  "sym_tbl": {
+    "-":      [[2, 3]],
+    "=":      [],
+    "0":      [[1, 1]],
+    "1":      [[1, 3]],
+    "/":      [[1, 101], [1, 1008]],
+    "*":      [],
+    "?":      []
+  },
+  "def_repeat": 3,
+  "macro": {
+    "[prefix]": "",
+    "[suffix]": "",
+    "[end of macro]": ""
+  },
+  "buttons": {
+    "off": "-F807/",
+    "vol_up": "-8778/",
+    "vol_down": "-7887/",
+    "play": "-1FE0/",
+    "next": "-9669/",
+    "prev": "-6996/",
+    "end of buttons": ""
+  }
+}

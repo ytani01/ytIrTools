@@ -1,3 +1,15 @@
+[auto_aircon]
+port = 51002
+ttemp = 26.0
+topic = aircon1/param
+kp = 5.5
+ki = 5.5
+kd = 5.5
+ki_i_max = 10.0
+
+[temp]
+topic = env1/temp
+
 [aircon]
 dev_name = aircon
 button_header = on_hot_auto_
@@ -7,20 +19,6 @@ interval_min = 40
 host = localhost
 port = 51001
 
-[temp]
-topic = env1/temp
-
-[auto_aircon]
-ttemp = 26.5
-topic = aircon1/param
-kp = 5.0
-ki = 4.0
-kd = 5.5
-ki_i_max = 10.0
-
 [param]
 host = localhost
 port = 51888
-
-[server]
-port = 51002

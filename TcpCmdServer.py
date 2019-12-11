@@ -28,15 +28,28 @@ FAUNC_I: 複数クライアントからの要求が並列実行される(マル�
 FAUNC_Q: 並列実行されず、必ず順に一つずつ実行される(シングルスレッド)。
 
 
-呼び出し関係
+オブジェクト
 ------------
 main()
   |
   +- CmdServerApp
        |
+       +- Cmd
+       |
        +- CmdServer
             |
             +- CmdServerHandler
+
+スレッド
+--------
+main() - CmdServerApp:main() - Cmd.main()
+           |
+           +- CmdServer.serve_forever()
+           |   |
+           |   +- CmdServerHandler.handle()
+           |
+           +- CmdServerApp.cmd_worker()
+
 """
 __author__ = 'Yoichi Tanibayashi'
 __date__   = '2019'
@@ -78,18 +91,28 @@ class Cmd:
     FUNC_Q = 'func_q'
     HELP_STR = 'help'
 
-    def __init__(self, init_param=None, debug=False):
+    CMD_HELP = 'help'
+    CMD_EXIT = 'exit'
+    CMD_SHUTDOWN = 'shutdown9999'
+
+    def __init__(self, init_param=None, port=DEF_PORT, debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
-        self._logger.debug('init_param=%s', init_param)
+        self._logger.debug('init_param=%s, port=%s', init_param, port)
+
+        if port is None:
+            self._port = self.DEF_PORT
+        else:
+            self._port = port
+        self._logger.debug('_port=%d', self._port)
 
         self._active = True  # main()の終了条件に使用
 
         self.add_cmd('sleep', self.cmd_i_sleep, self.cmd_q_sleep, 'sleep')
-        self.add_cmd('help', self.cmd_i_help, None, 'command help')
-        self.add_cmd(CmdServerHandler.CMD_EXIT, self.cmd_i_exit, None,
-                     'disconnect')
-        self.add_cmd('shutdown9999', self.cmd_i_shutdown, self.cmd_q_shutdown,
+        self.add_cmd(self.CMD_HELP, self.cmd_i_help, None, 'command help')
+        self.add_cmd(self.CMD_EXIT, self.cmd_i_exit, None, 'disconnect')
+        self.add_cmd(self.CMD_SHUTDOWN,
+                     self.cmd_i_shutdown, self.cmd_q_shutdown,
                      'shutdown server')
 
     def main(self):
@@ -269,8 +292,6 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
     """
     DEF_HANDLE_TIMEOUT = 3  # sec
 
-    CMD_EXIT = 'exit'
-
     EOF = '\x04'
 
     def __init__(self, req, c_addr, svr):
@@ -400,7 +421,7 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
                 rc, msg = self._svr._app._cmd._cmd[args[0]][Cmd.FUNC_I](args)
                 self._logger.info('rc=%s, msg=%s', rc, msg)
 
-                if args[0] == self.CMD_EXIT:
+                if args[0] == Cmd.CMD_EXIT:
                     self._active = False
                     self._logger.debug('_active=%s', self._active)
 
@@ -517,8 +538,6 @@ class CmdServer(socketserver.ThreadingTCPServer):
 class CmdServerApp:
     """
     """
-    SHUTDOWN_CMD = 'shutdown9999'
-
     def __init__(self, cmd_class, init_param=None, port=Cmd.DEF_PORT,
                  debug=False):
         self._debug = debug
@@ -528,8 +547,8 @@ class CmdServerApp:
 
         self._cmdq = queue.Queue()
 
-        self._cmd = cmd_class(init_param, debug=self._debug)
-        self._svr = CmdServer(self, port, self._debug)
+        self._cmd = cmd_class(init_param, port, debug=self._debug)
+        self._svr = CmdServer(self, self._cmd._port, self._debug)
         self._svr_th = threading.Thread(target=self._svr.serve_forever,
                                         daemon=True)
         self._cmd_worker_th = threading.Thread(target=self.cmd_worker,
@@ -570,7 +589,7 @@ class CmdServerApp:
                 repq.put((rc, msg))
 
             # shutdown check
-            if args[0] == self.SHUTDOWN_CMD:
+            if args[0] == Cmd.CMD_SHUTDOWN:
                 self._logger.info('shutdown !!')
                 time.sleep(1)
                 break
@@ -606,7 +625,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 @click.command(context_settings=CONTEXT_SETTINGS,
                help='TCP Server base class')
-@click.option('--port', 'port', type=int, default=Cmd.DEF_PORT,
+@click.option('--port', 'port', type=int,
               help='port number')
 @click.option('--debug', '-d', 'debug', is_flag=True, default=False,
               help='debug flag')
@@ -616,7 +635,7 @@ def main(port, debug):
 
     logger.info('start')
 
-    app = CmdServerApp(Cmd, port=port, debug=debug)
+    app = CmdServerApp(Cmd, init_param=None, port=port, debug=debug)
     try:
         app.main()
     finally:

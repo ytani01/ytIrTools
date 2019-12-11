@@ -199,10 +199,12 @@ class AutoAirconCmd(Cmd):
     COEFF_I = 0.01
     COEFF_D = 100
 
-    def __init__(self, init_param=None, debug=False):
+    def __init__(self, init_param=None, port=DEF_PORT, debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
-        self._logger.debug('init_param=%s', init_param)
+        self._logger.debug('init_param=%s, port=%s', init_param, port)
+        if init_param is None:
+            init_param = {}
 
         # コマンド追加
         self.add_cmd('on', None, self.cmd_q_on, 'Auto control ON')
@@ -213,18 +215,32 @@ class AutoAirconCmd(Cmd):
         self.add_cmd('kd', None, self.cmd_q_kd, 'get and set kd')
 
         self.add_cmd('temp', None, self.cmd_q_temp, 'get current temp')
-        self.add_cmd('rtemp', None, self.cmd_q_rtemp,
-                     'get and set target temp')
+        self.add_cmd('rtemp', None, self.cmd_q_rtemp, 'get or set target temp')
         self.add_cmd('ttemp', None, self.cmd_q_ttemp,
-                     'get and set remocon temp')
+                     'get or set remocon temp')
 
         self.add_cmd('interval_min', None, self.cmd_q_interval_min,
                      'interval_min')
 
         # サーバー独自の設定
-        cfg = self.load_conf()
+        cfg, self._conf_file = self.load_conf()
         if cfg is None:
             raise RuntimeError('load_conf(): failed')
+
+        self._port = cfg.getint('auto_aircon', 'port', fallback=self.DEF_PORT)
+        if port is not None:
+            self._port = port
+        self._logger.debug('_port=%d', self._port)
+
+        self._ttemp = cfg.getfloat('auto_aircon', 'ttemp')
+        if 'ttemp' in init_param:
+            self._ttemp = float(init_param['ttemp'])
+        self._logger.debug('_ttemp=%s', self._ttemp)
+
+        self._kp = cfg.getfloat('auto_aircon', 'kp')
+        self._ki = cfg.getfloat('auto_aircon', 'ki')
+        self._kd = cfg.getfloat('auto_aircon', 'kd')
+        self._ki_i_max = cfg.getfloat('auto_aircon', 'ki_i_max')
 
         ir_host = cfg.get('ir', 'host')
         aircon_dev = cfg.get('aircon', 'dev_name')
@@ -234,11 +250,6 @@ class AutoAirconCmd(Cmd):
         param_port = cfg.getint('param', 'port')
 
         self._temp_topic = cfg.get('temp', 'topic')
-        self._ttemp = cfg.getfloat('auto_aircon', 'ttemp')
-        self._kp = cfg.getfloat('auto_aircon', 'kp')
-        self._ki = cfg.getfloat('auto_aircon', 'ki')
-        self._kd = cfg.getfloat('auto_aircon', 'kd')
-        self._ki_i_max = cfg.getfloat('auto_aircon', 'ki_i_max')
 
         self._i = 0
         self._prev_i = 0
@@ -254,7 +265,7 @@ class AutoAirconCmd(Cmd):
         self._param_cl = ParamClient(param_host, param_port, debug=self._debug)
 
         # 最後に super()__init__()
-        super().__init__(debug=self._debug)
+        super().__init__(port=self._port, debug=self._debug)
 
     def main(self):
         self._logger.debug('')
@@ -402,7 +413,7 @@ class AutoAirconCmd(Cmd):
             for p in cfg[s]:
                 self._logger.debug('  %s: %s: %s', s, p, cfg[s][p])
 
-        return cfg
+        return cfg, conf_file
 
     #
     # PID
@@ -629,8 +640,7 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 @click.command(context_settings=CONTEXT_SETTINGS,
                help='Auto Aircon Server')
 @click.option('--port', '-p', 'port', type=int,
-              default=AutoAirconCmd.DEF_PORT,
-              help='port number (%s)' % AutoAirconCmd.DEF_PORT)
+              help='port numbe')
 @click.option('--debug', '-d', 'debug', is_flag=True, default=False,
               help='debug flag')
 def main(port, debug):
@@ -639,7 +649,7 @@ def main(port, debug):
 
     logger.info('start')
 
-    app = CmdServerApp(AutoAirconCmd, port=port, debug=debug)
+    app = CmdServerApp(AutoAirconCmd, init_param=None, port=port, debug=debug)
     try:
         app.main()
     finally:
