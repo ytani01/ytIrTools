@@ -2,9 +2,9 @@
 port = 51002
 ttemp = 26.0
 topic = aircon1/param
-kp = 5.5
-ki = 5.5
-kd = 7.0
+kp = 4.5
+ki = 6.5
+kd = 3.5
 ki_i_max = 10.0
 
 [temp]
