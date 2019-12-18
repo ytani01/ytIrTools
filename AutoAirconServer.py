@@ -199,7 +199,8 @@ class AutoAirconCmd(Cmd):
     COEFF_I = 0.01
     COEFF_D = 100
 
-    def __init__(self, init_param=None, port=DEF_PORT, debug=False):
+    def __init__(self, init_param={'ttemp': DEF_TTEMP}, port=DEF_PORT,
+                 debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
         self._logger.debug('init_param=%s, port=%s', init_param, port)
@@ -232,9 +233,10 @@ class AutoAirconCmd(Cmd):
             self._port = port
         self._logger.debug('_port=%d', self._port)
 
-        self._ttemp = cfg.getfloat('auto_aircon', 'ttemp')
         if 'ttemp' in init_param:
             self._ttemp = float(init_param['ttemp'])
+        else:
+            self._ttemp = self.DEF_TTEMP
         self._logger.debug('_ttemp=%s', self._ttemp)
 
         self._kp = cfg.getfloat('auto_aircon', 'kp')
@@ -639,17 +641,20 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 @click.command(context_settings=CONTEXT_SETTINGS,
                help='Auto Aircon Server')
+@click.argument('target_temp', type=float)
 @click.option('--port', '-p', 'port', type=int,
               help='port numbe')
 @click.option('--debug', '-d', 'debug', is_flag=True, default=False,
               help='debug flag')
-def main(port, debug):
+def main(target_temp, port, debug):
     logger = get_logger(__name__, debug)
-    logger.debug('port=%s', port)
+    logger.debug('target_temp=%s, port=%s', target_temp, port)
 
     logger.info('start')
 
-    app = CmdServerApp(AutoAirconCmd, init_param=None, port=port, debug=debug)
+    app = CmdServerApp(AutoAirconCmd, init_param={'ttemp': target_temp},
+                       port=port,
+                       debug=debug)
     try:
         app.main()
     finally:
