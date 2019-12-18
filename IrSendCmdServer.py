@@ -26,10 +26,11 @@ class IrSendCmd(Cmd):
 
     SUBCMD = {'LOAD': '@load'}
 
-    def __init__(self, init_param=(IrSend.DEF_PIN,), debug=False):
+    def __init__(self, init_param=(IrSend.DEF_PIN,), port=DEF_PORT,
+                 debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
-        self._logger.debug('init_param=%s', init_param)
+        self._logger.debug('init_param=%s, port=%s', init_param, port)
 
         # コマンド追加
         self.add_cmd(self.CMD_NAME, None, self.cmd_q_irsend, 'send IR signal')
@@ -39,7 +40,7 @@ class IrSendCmd(Cmd):
         self._irsend = IrSend(gpio, load_conf=True, debug=False)
 
         # 最後に super()__init__()
-        super().__init__(debug=self._debug)
+        super().__init__(port=port, debug=self._debug)
 
     def cmd_q_irsend(self, args):
         """
