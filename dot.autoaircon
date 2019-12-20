@@ -1,10 +1,6 @@
 [auto_aircon]
 port = 51002
 topic = aircon1/param
-kp = 4.5
-ki = 6.5
-kd = 3.5
-ki_i_max = 10.0
 
 [temp]
 topic = env1/temp

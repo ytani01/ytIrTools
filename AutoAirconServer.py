@@ -25,6 +25,85 @@ import time
 from MyLogger import get_logger
 
 
+class PIDParam:
+    PARAM_FILENAME = [
+        'autoaircon-param.json', '.autoaircon-param.json',
+        'autoaircon-param', '.autoaircon-param'
+    ]
+    PARAM_PATH = ['.', os.environ['HOME'], '/etc']
+
+    DEF_PARAM = {
+        'kp': 0.0,
+        'ki': 0.0,
+        'kd': 0.0,
+        'ki_i_max': 0.0,
+        'interval_min': 0,
+    }
+
+    def __init__(self, param=DEF_PARAM, param_file=None, debug=False):
+        self._debug = debug
+        self._logger = get_logger(__class__.__name__, self._debug)
+        self._logger.debug('param=%s, param_file=%s', param, param_file)
+
+        self.param = param
+        self._param_file = param_file
+        if param_file is None:
+            self._param_file = self.find()
+        self._logger.debug('_param_file=%s', self._param_file)
+
+        self.load()
+
+    def load(self):
+        self._logger.debug('')
+
+        try:
+            with open(self._param_file) as f:
+                p = json.load(f)
+        except Exception as e:
+            msg = '%s:%s' % (type(e), e)
+            self._logger.error(msg)
+            return {'error': msg}
+
+        for k in p:
+            self.param[k] = p[k]
+        self._logger.debug('param=%s', self.param)
+        return self.param
+
+    def save(self):
+        self._logger.debug('')
+
+        try:
+            with open(self._param_file, 'w') as f:
+                json.dump(self.param, f, indent=2)
+        except Exception as e:
+            msg = '%s:%s' % (type(e), e)
+            self._logger.error(msg)
+            return {'error': msg}
+        return self.param
+
+    def find(self, fname=PARAM_FILENAME, path=PARAM_PATH):
+        self._logger.debug('fname=%s, path=%s', fname, path)
+
+        for d in path:
+            for f in fname:
+                pathname = d + '/' + f
+                self._logger.debug('pathname=%s', pathname)
+                if self.is_readable(pathname):
+                    return pathname
+        return None
+
+    def is_readable(self, pathname):
+        self._logger.debug('pathname=%s', pathname)
+
+        try:
+            f = open(pathname)
+            f.close()
+        except Exception as e:
+            self._logger.debug('%s:%s', type(e), e)
+            return False
+        return True
+
+
 class ParamClient(TcpCmdClient):
     DEF_SVR_HOST = 'localhost'
     DEF_SVR_PORT = 51888
@@ -228,9 +307,10 @@ class AutoAirconCmd(Cmd):
         if cfg is None:
             raise RuntimeError('load_conf(): failed')
 
-        self._port = cfg.getint('auto_aircon', 'port', fallback=self.DEF_PORT)
-        if port is not None:
-            self._port = port
+        self._port = port
+        if port is None:
+            self._port = cfg.getint('auto_aircon', 'port',
+                                    fallback=self.DEF_PORT)
         self._logger.debug('_port=%d', self._port)
 
         if 'ttemp' in init_param:
@@ -238,11 +318,6 @@ class AutoAirconCmd(Cmd):
         else:
             self._ttemp = self.DEF_TTEMP
         self._logger.debug('_ttemp=%s', self._ttemp)
-
-        self._kp = cfg.getfloat('auto_aircon', 'kp')
-        self._ki = cfg.getfloat('auto_aircon', 'ki')
-        self._kd = cfg.getfloat('auto_aircon', 'kd')
-        self._ki_i_max = cfg.getfloat('auto_aircon', 'ki_i_max')
 
         ir_host = cfg.get('ir', 'host')
         aircon_dev = cfg.get('aircon', 'dev_name')
@@ -259,11 +334,17 @@ class AutoAirconCmd(Cmd):
         self._rtemp = round(self._ttemp)
         self._temp = self._ttemp
 
+        self._pp = PIDParam(debug=self._debug)
+        self._logger.debug('_pp.param=%s', self._pp.param)
+
         self._bbt = Beebotte(self._temp_topic, debug=False)
-        self._aircon = Aircon(aircon_dev, aircon_bhdr,
-                              ir_host, aircon_interval_min,
+
+        self._aircon = Aircon(aircon_dev, aircon_bhdr, ir_host,
+                              aircon_interval_min,
                               debug=self._debug)
+
         self._temp_hist = TempHist(debug=self._debug)
+
         self._param_cl = ParamClient(param_host, param_port, debug=self._debug)
 
         # 最後に super()__init__()
@@ -282,9 +363,9 @@ class AutoAirconCmd(Cmd):
             'ttemp': self._ttemp,
             'rtemp': self._rtemp,
             'temp': self._temp,
-            'kp': self._kp,
-            'ki': self._ki,
-            'kd': self._kd,
+            'kp': self._pp.param['kp'],
+            'ki': self._pp.param['ki'],
+            'kd': self._pp.param['kd'],
             'interval_min': self._aircon._interval_min
         })
 
@@ -321,9 +402,9 @@ class AutoAirconCmd(Cmd):
                 'ttemp': self._ttemp,
                 'rtemp': self._rtemp,
                 'temp': self._temp,
-                'kp': self._kp,
-                'ki': self._ki,
-                'kd': self._kd,
+                'kp': self._pp.param['kp'],
+                'ki': self._pp.param['ki'],
+                'kd': self._pp.param['kd'],
                 'interval_min': self._aircon._interval_min
             })
 
@@ -430,17 +511,17 @@ class AutoAirconCmd(Cmd):
         if None in (p_, i_, d_):
             return None
 
-        kp_p = -self._kp * p_
+        kp_p = -self._pp.param['kp'] * p_
 
-        ki_i = -self._ki * i_
-        if abs(ki_i) > self._ki_i_max:
+        ki_i = -self._pp.param['ki'] * i_
+        if abs(ki_i) > self._pp.param['ki_i_max']:
             self._logger.warning('abs(ki_i)=%.1f > %.1f',
-                                 abs(ki_i), self._ki_i_max)
-            ki_i = ki_i / abs(ki_i) * self._ki_i_max
+                                 abs(ki_i), self._pp.param['ki_i_max'])
+            ki_i = ki_i / abs(ki_i) * self._pp.param['ki_i_max']
             self._i = self._prev_i
             self._logger.warning('ki_i=%.1f, self._i=%.1f ', ki_i, self._i)
 
-        kd_d = -self._kd * d_
+        kd_d = -self._pp.param['kd'] * d_
 
         self._logger.debug('(kp_p,ki_i,kd_d)=(%s,%s,%s)', kp_p, ki_i, kd_d)
 
@@ -448,8 +529,12 @@ class AutoAirconCmd(Cmd):
 
         self._param_cl.send_param({
             'pid': pid,
-            'kp_p': kp_p, 'ki_i': ki_i, 'kd_d': kd_d,
-            'kp': self._kp, 'ki': self._ki, 'kd': self._kd,
+            'kp_p': kp_p,
+            'ki_i': ki_i,
+            'kd_d': kd_d,
+            'kp': self._pp.param['kp'],
+            'ki': self._pp.param['ki'],
+            'kd': self._pp.param['kd'],
         })
         return pid
 
@@ -525,11 +610,12 @@ class AutoAirconCmd(Cmd):
         self._logger.debug('args=%a', args)
 
         if len(args) == 1:
-            return self.RC_OK, self._kp
+            return self.RC_OK, self._pp.param['kp']
 
         try:
-            self._kp = float(args[1])
-            self._param_cl.send_param({'kp': self._kp})
+            self._pp.param['kp'] = float(args[1])
+            self._pp.save()
+            self._param_cl.send_param({'kp': self._pp.param['kp']})
         except Exception as e:
             msg = '%s:%s' % (type(e), e)
             self._logger.error(msg)
@@ -541,12 +627,13 @@ class AutoAirconCmd(Cmd):
         self._logger.debug('args=%a', args)
 
         if len(args) == 1:
-            return self.RC_OK, self._ki
+            return self.RC_OK, self._pp.param['ki']
 
         self._i = 0
         try:
-            self._ki = float(args[1])
-            self._param_cl.send_param({'ki': self._ki})
+            self._pp.param['ki'] = float(args[1])
+            self._pp.save()
+            self._param_cl.send_param({'ki': self._pp.param['ki']})
         except Exception as e:
             msg = '%s:%s' % (type(e), e)
             self._logger.error(msg)
@@ -558,11 +645,12 @@ class AutoAirconCmd(Cmd):
         self._logger.debug('args=%a', args)
 
         if len(args) == 1:
-            return self.RC_OK, self._kd
+            return self.RC_OK, self._pp.param['kd']
 
         try:
-            self._kd = float(args[1])
-            self._param_cl.send_param({'kd': self._kd})
+            self._pp.param['kd'] = float(args[1])
+            self._pp.save()
+            self._param_cl.send_param({'kd': self._pp.param['kd']})
         except Exception as e:
             msg = '%s:%s' % (type(e), e)
             self._logger.error(msg)
@@ -640,7 +728,9 @@ CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
 
 
 @click.command(context_settings=CONTEXT_SETTINGS,
-               help='Auto Aircon Server')
+               help='''
+Auto Aircon Server
+''')
 @click.argument('target_temp', type=float)
 @click.option('--port', '-p', 'port', type=int,
               help='port numbe')
