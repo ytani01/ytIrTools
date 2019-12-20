@@ -1,6 +1,5 @@
 [auto_aircon]
 port = 51002
-topic = aircon1/param
 
 [temp]
 topic = env1/temp
