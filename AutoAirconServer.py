@@ -193,8 +193,10 @@ class Aircon(IrSendCmdClient):
            and abs(self._rtemp - rtemp) < 2:
             self._interval_min_count += 1
             if self._interval_min_count < 3:
-                self._logger.info('rtemp=%s, interval=%.1f < %s .. ignored',
-                                  rtemp, interval, self._interval_min)
+                self._logger.info('rtemp=%s,interval=%.1f < %s[%d] .. ignored',
+                                  rtemp, interval,
+                                  self._interval_min,
+                                  self._interval_min_count)
                 return None
             else:
                 self._logger.info('_interval_min_count=%d',
