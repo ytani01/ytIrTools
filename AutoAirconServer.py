@@ -188,7 +188,9 @@ class Aircon(IrSendCmdClient):
 
         ts_now = time.time()
         interval = ts_now - self._ts_set_temp
-        if not force and interval < self._interval_min:
+        if not force \
+           and interval < self._interval_min \
+           and abs(self._rtemp - rtemp) < 2:
             self._interval_min_count += 1
             if self._interval_min_count < 2:
                 self._logger.info('rtemp=%s, interval=%.1f < %s .. ignored',
