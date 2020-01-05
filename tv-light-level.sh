@@ -4,7 +4,7 @@
 #
 MYNAME=`basename $0`
 
-IRSEND_CMD="ir-send"
+IRSEND_CMD="$HOME/bin/ir-send"
 DEV_NAME="tv-light"
 BUTTON_UP="up"
 BUTTON_DOWN="down"
