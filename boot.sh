@@ -12,17 +12,20 @@ ts_echo () {
 
 ts_echo "> ${MYNAME}: start"
 
-NAME_PIGPIOD="pigpiod"
-NAME_IRSENDSERVER="IrSendCmdServer"
-NAME_AUTOAIRCON="AutoAirconServer"
-
 LOGDIR=${HOME}/tmp
-LOG_IRSENDSERVER=${LOGDIR}/${NAME_IRSENDSERVER}.log
-LOG_AUTOAIRCON=${LOGDIR}/${NAME_AUTOAIRCON}.log
 
+NAME_PIGPIOD="pigpiod"
 PID_PIGPIOD=`pgrep ${NAME_PIGPIOD}`
+
+NAME_IRSENDSERVER="IrSendCmdServer"
+LOG_IRSENDSERVER=${LOGDIR}/${NAME_IRSENDSERVER}.log
 PID_IRSENDSERVER=`pgrep -f python.\*${NAME_IRSENDSERVER}.py`
+
+NAME_AUTOAIRCON="AutoAirconServer"
+LOG_AUTOAIRCON=${LOGDIR}/${NAME_AUTOAIRCON}.log
 PID_AUTOAIRCON=`pgrep -f python.\*${NAME_AUTOAIRCON}.py`
+TARGET_TEMP=25
+
 
 if [ X$PID_PIGPIOD = X ]; then
     ts_echo "start pigpiod"
@@ -47,7 +50,7 @@ if [ X$PID_AUTOAIRCON = X ]; then
     if [ -x ${HOME}/bin/${NAME_AUTOAIRCON}.py ]; then
 	mv -f ${LOG_AUTOAIRCON} ${LOG_AUTOAIRCON}.1
 	ts_echo "start ${NAME_AUTOAIRCON}"
-	${HOME}/bin/${NAME_AUTOAIRCON}.py > ${LOG_AUTOAIRCON} 2>&1 &
+	${HOME}/bin/${NAME_AUTOAIRCON}.py ${TARGET_TEMP} > ${LOG_AUTOAIRCON} 2>&1 &
     fi
 fi
 

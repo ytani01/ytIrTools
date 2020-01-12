@@ -226,14 +226,16 @@ class TempHist:
     """
     _val := [{'temp': temp1, 'ts': ts1}, {'temp': temp2, 'ts': ts2}, .. ]
     """
-    DEF_HIST_LEN = 60  # sec
+    DEF_HIST_SEC = 60  # sec
 
-    def __init__(self, val=[], debug=False):
+    def __init__(self, val=[], hist_sec=DEF_HIST_SEC, debug=False):
         self._debug = debug
         self._logger = get_logger(__class__.__name__, self._debug)
-        self._logger.debug('val=%s', val)
+        self._logger.debug('val=%s, hist_sec=%s', val, hist_sec)
 
         self._val = val
+        self._hist_sec = hist_sec
+
         self._i = 0
 
     def add(self, temp, ts):
@@ -241,7 +243,7 @@ class TempHist:
 
         self._val.append({'temp': temp, 'ts': ts})
 
-        while ts - self._val[0]['ts'] > self.DEF_HIST_LEN:
+        while ts - self._val[0]['ts'] > self._hist_sec and len(self._val) >= 2:
             v = self._val.pop(0)
             self._logger.debug('  remove: %s', v)
 
@@ -347,7 +349,7 @@ class AutoAirconCmd(Cmd):
                               aircon_interval_min,
                               debug=self._debug)
 
-        self._temp_hist = TempHist(debug=self._debug)
+        self._temp_hist = TempHist(hist_sec=30, debug=self._debug)
 
         self._param_cl = ParamClient(param_host, param_port, debug=self._debug)
 
