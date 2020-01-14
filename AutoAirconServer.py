@@ -349,7 +349,7 @@ class AutoAirconCmd(Cmd):
                               aircon_interval_min,
                               debug=self._debug)
 
-        self._temp_hist = TempHist(hist_sec=30, debug=self._debug)
+        self._temp_hist = TempHist(hist_sec=45, debug=self._debug)
 
         self._param_cl = ParamClient(param_host, param_port, debug=self._debug)
 
