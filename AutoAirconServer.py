@@ -488,14 +488,14 @@ class AutoAirconCmd(Cmd):
         conf_file = self.find_conf(fname, path)
         self._logger.debug('conf_file=%s', conf_file)
         if conf_file is None:
-            return None
+            return None, None
 
         cfg = configparser.ConfigParser()
         try:
             cfg.read(conf_file)
         except Exception as e:
             self._logger.error('%s:%s', type(e), e)
-            return None
+            return None, None
 
         for s in cfg:
             for p in cfg[s]:

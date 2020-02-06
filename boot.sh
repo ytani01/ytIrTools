@@ -5,10 +5,12 @@
 MYNAME=`basename $0`
 
 DATE_FMT="%Y/%m/%d %H:%M:%S"
-
 ts_echo () {
     echo `date +"${DATE_FMT}"` $*
 }
+
+GITNAME="ytIrTools"
+. ${HOME}/bin/activate-${GITNAME}
 
 ts_echo "> ${MYNAME}: start"
 
@@ -40,7 +42,9 @@ done
 
 if [ X$PID_IRSENDSERVER = X ]; then
     if [ -x ${HOME}/bin/${NAME_IRSENDSERVER}.py ]; then
-	mv -f ${LOG_IRSENDSERVER} ${LOG_IRSENDSERVER}.1
+	if [ -f ${LOG_IRSENDSERVER} ]; then
+	    mv -fv ${LOG_IRSENDSERVER} ${LOG_IRSENDSERVER}.1
+	fi
 	ts_echo "start ${NAME_IRSENDSERVER}"
 	${HOME}/bin/${NAME_IRSENDSERVER}.py > ${LOG_IRSENDSERVER} 2>&1 &
     fi
@@ -48,7 +52,9 @@ fi
 
 if [ X$PID_AUTOAIRCON = X ]; then
     if [ -x ${HOME}/bin/${NAME_AUTOAIRCON}.py ]; then
-	mv -f ${LOG_AUTOAIRCON} ${LOG_AUTOAIRCON}.1
+	if [ -f ${LOG_AUTOAIRCON} ]; then
+	    mv -fv ${LOG_AUTOAIRCON} ${LOG_AUTOAIRCON}.1
+	fi
 	ts_echo "start ${NAME_AUTOAIRCON}"
 	${HOME}/bin/${NAME_AUTOAIRCON}.py ${TARGET_TEMP} > ${LOG_AUTOAIRCON} 2>&1 &
     fi
