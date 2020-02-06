@@ -13,7 +13,7 @@ Raspberry Pi + pigpio + python3 による、赤外線リモコン制御・解析
 
 ちなみに…
 GPIO の ON/OFF で信号を出しているのではなく、
-pigpioの wave関数を使って、高品質な赤外線信号を実現してます。
+pigpioの wave関数を使って、高品質な赤外線信号を作成してます。
 
 
 ## 注意
