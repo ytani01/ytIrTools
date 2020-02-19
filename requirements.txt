@@ -1,0 +1,3 @@
+Click
+pigpio
+pkg-resources
