@@ -29,6 +29,11 @@ fi
 VENV_NAME=`basename ${VIRTUAL_ENV}`
 echo "VENV_NAME=$VENV_NAME"
 
+if [ -f requirements.txt ]; then
+    pip3 install -r requirements.txt 
+fi
+
+
 ln -sfv ${VIRTUAL_ENV}/bin/activate ${BINDIR}/activate-${GITNAME}
 
 

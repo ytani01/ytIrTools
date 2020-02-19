@@ -25,7 +25,23 @@ PWM用のピン(GPIO 12,13,18,19)は、使用しないで下さい。
 
 ## インストール
 
+### ytIrTools
+
+```bash
+# cd ~
+$ python3 -m venv env-ir
+$ cd env-ir
+$ git clone https://www.github.com/ytani01/ytIrTools.git
+$ cd ytIrTools
+$ ./setup.sh
+```
+
 ### Node-RED
+
+Node-REDのインストール
+```bash
+bash < \(curl -sL https://raw.githubusercontent.com/node-red/linux-installers/master/deb/update-nodejs-and-nodered\)
+```
 
 追加フロー
 * node-red-dashbaord
