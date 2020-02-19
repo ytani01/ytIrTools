@@ -29,18 +29,25 @@ fi
 VENV_NAME=`basename ${VIRTUAL_ENV}`
 echo "VENV_NAME=$VENV_NAME"
 
+
+# make symlink to activate venv
+ln -sfv ${VIRTUAL_ENV}/bin/activate ${BINDIR}/activate-${GITNAME}
+
+
+# Python3 packages
 if [ -f requirements.txt ]; then
     pip3 install -r requirements.txt 
 fi
 
 
-ln -sfv ${VIRTUAL_ENV}/bin/activate ${BINDIR}/activate-${GITNAME}
+# install Node-RED ### T.B.D ###
 
 
+# AutoAircon
 cp -v dot.autoaircon ${HOME}/.autoaircon 
 cp -v dot.autoaircon-param ${HOME}/.autoaircon-param
 
-
+# MQTT
 echo "${MQTT_DIR} .."
 if [ -d ../${MQTT_DIR} ]; then
     echo "found."
@@ -50,6 +57,7 @@ else
     git clone git@github.com:ytani01/${MQTT_DIR}.git
 fi
 
+# Commands
 cd ${BINDIR}
 echo "[" `pwd` "]"
 
