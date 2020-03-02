@@ -35,6 +35,10 @@ $ git clone https://www.github.com/ytani01/ytIrTools.git
 $ cd ytIrTools
 $ ./setup.sh
 ```
+このとき、crontabの設定が上書きされます。
+直前の設定内容は、``${HOME}/tmp/crontab.bak``に保存されます。
+もし、必要なら、``crontab -e``コマンドなどで、設定を調整して下さい。
+
 
 ### Node-RED
 
@@ -72,13 +76,10 @@ $ sudo pigpiod -t 0
 今までの crontabが全て消去されます！
 
 
-### IrSendCmdServer.py -- 赤外線信号送信サーバー
+### ir-send (IrSendCmdClient.py) -- 赤外線信号コマンド
 
-赤外線信号を送信する場合は、あらかじめ起動しておいて下さい。
-(crontab.sample 参照)
-
-
-### IrSendCmdClient.py -- 赤外線信号送信クライアント
+実体は、``IrSendCmdClient.py``ですが、${HOME}/binの直下に、
+``ir-send``という名前でシンボリックリンクが作成されます。
 
 デバイス名とボタン名を指定して、赤外線信号を送信する。
 デバイス名・ボタンの設定は後述。
@@ -87,7 +88,7 @@ $ sudo pigpiod -t 0
 デバイス名だけを指定した場合は、ボタン一覧
 を表示。
 ```
-$ IrSendCmdClient.py -h
+$ ir-send -h
 
 Usage: IrSendCmdClient.py [OPTIONS] [ARG]...
 
@@ -99,21 +100,24 @@ Options:
   -d, --debug         debug flag
   -h, --help          Show this message and exit.
 
-$ IrSendCmdClient.py dev1 button1 button2
+$ ir-send.py dev1 button1 button2
 デバイス「dev1」のボタン「button1」と「button2」を連続して送信
 
-$ IrSendCmdClient.py
+$ ir-send.py
 設定されているデバイス一覧
 
-$ IrSendCmdClient.py dev1
+$ ir-send.py dev1
 デバイス「dev1」に設定されているボタン一覧
 
-$ IrSendCmdClient.py @load
+$ ir-send.py @load
 設定ファイルの再読み込み
 
 ```
 
-### IrAnalyze.py -- 赤外線信号受信・解析
+### ir-analyze (IrAnalyze.py) -- 赤外線信号受信・解析
+
+実体は、``IrAnalyze.py``ですが、${HOME}/binの直下に、
+``ir-analyze``と言う名前でシンボリックリンクが作成されます。
 
 赤外線信号を受信して解析結果を表示する。
 
@@ -130,29 +134,32 @@ $ IrSendCmdClient.py @load
 Usage: IrAnalyze.py [OPTIONS] [PIN]
 
   IR signal analyzer
-
+  
 Options:
-  -d, --debug  debug flag
-  -h, --help   Show this message and exit.
+  -n INTEGER     number of signal to anlyze
+  -v, --verbose  verbose mode
+  -d, --debug    debug flag
+  -h, --help     Show this message and exit.
 ```
 
 
 ## 設定ファイル(*.irconf)
 
-* 一つのファイルに複数のデバイス設定を記述することができる。
-* IrAnalyze.py の出力(/tmp/ir_dump.irconf)を元に、
-デバイス名、ボタン名などを設定できる。
+* JSON形式で記述します。
+* 一つのファイルに複数のデバイス設定を記述することができます。
+* ``ir-analyze`` の出力(``/tmp/ir_dump.irconf``)を元に、
+デバイス名、ボタン名などを設定できます。
 * マクロ文字列を使えば、効率良く、わかりやすい記述が可能。
 
 
 ### ファイル名
 
-* 拡張子は「.irconf」。これ以外のファイルは無視される。
+* 拡張子は「.irconf」。これ以外のファイルは無視されます。
 
 
 ### 検索パス
 
-下記のパスに存在する全ての``*.irconf''ファイルを読み込む。
+下記のパスに存在する全ての``*.irconf''ファイルを読み込みます。
 
 1. カレントディレクトリ
 2. ${HOME}/.irconf.d

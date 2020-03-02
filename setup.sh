@@ -16,9 +16,11 @@ fi
 
 LOGDIR="${HOME}/tmp"
 
-IRCONF_D=${HOME}/.irconf.d
+IRCONF_D="${HOME}/.irconf.d"
 
 MQTT_DIR="ytMQTT"
+
+CRONTAB_FILE="crontab.sample"
 
 echo 
 ##### main
@@ -64,3 +66,16 @@ echo "[" `pwd` "]"
 for f in ir-analyze ir-send IrAnalyze.py IrSendCmdServer.py IrSendCmdClient.py AutoAirconServer.py boot.sh dyson.sh dyson-temp.sh tv-light-level.sh ; do
     ln -sfv ${MYDIR}/$f ${BINDIR}/$f
 done
+
+# irconf
+if [ ! -d ${IRCONF_D} ]; then
+    mkdir -p ${IRCON_D}
+fi
+cd ${IRCONF_D}
+ln -sfv ${MYDIR}/irconf.d/* .
+
+# crontab (auto boot)
+cd ${MYDIR}
+crontab -l ${HOME}/tmp/crontab.bak
+crontab ${CRONTAB_FILE}
+
