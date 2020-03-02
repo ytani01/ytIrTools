@@ -522,8 +522,12 @@ class AutoAirconCmd(Cmd):
         if abs(ki_i) > self._pp.param['ki_i_max']:
             self._logger.warning('abs(ki_i)=%.1f > %.1f',
                                  abs(ki_i), self._pp.param['ki_i_max'])
+            """
             ki_i = ki_i / abs(ki_i) * self._pp.param['ki_i_max']
             self._i = self._prev_i
+            """
+            ki_i = 0
+            self._i = 0
             self._logger.warning('ki_i=%.1f, self._i=%.1f ', ki_i, self._i)
 
         kd_d = -self._pp.param['kd'] * d_
