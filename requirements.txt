@@ -1,3 +1,4 @@
 Click
 pigpio
+paho-mqtt
 pkg-resources
