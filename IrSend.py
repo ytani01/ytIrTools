@@ -23,15 +23,15 @@ class WaveForm:
     ONOFF_STR = ['OFF', 'ON']
 
     def __init__(self, pin, debug=False):
-        self._debug = debug
-        self.logger = get_logger(__class__.__name__, debug)
-        self.logger.debug('pin=%d', pin)
+        self._dbg = debug
+        self._log = get_logger(__class__.__name__, debug)
+        self._log.debug('pin=%d', pin)
 
         self.pin = pin
         self.waveform = []
 
     def clear(self):
-        self.logger.debug('')
+        self._log.debug('')
         self.waveform = []
 
     def append_null(self, usec):
@@ -43,7 +43,7 @@ class WaveForm:
             raise ValueError(msg)
         if usec <= 0:
             raise ValueError('usec[' + str(usec) + '] must be > 0')
-        self.logger.debug('onoff:%-3s, usec=%s', self.ONOFF_STR[onoff], usec)
+        self._log.debug('onoff:%-3s, usec=%s', self.ONOFF_STR[onoff], usec)
 
         if onoff == self.ON:
             self.waveform.append(pigpio.pulse(1 << self.pin, 0, usec))
@@ -60,7 +60,7 @@ class WaveForm:
             raise ValueError(verr_msg)
         if type(onoff_list[0]) != int:
             raise ValueError(verr_msg)
-        self.logger.debug('onoff_list=%s', onoff_list)
+        self._log.debug('onoff_list=%s', onoff_list)
 
         for i, usec in enumerate(onoff_list):
             if i % 2 == 0:
@@ -72,7 +72,7 @@ class WaveForm:
         verr_msg = 'n:' + str(n) + ' must be > 1'
         if n < 1:
             raise ValueError(verr_msg)
-        self.logger.debug('onoff_list=%s, n=%d', onoff_list, n)
+        self._log.debug('onoff_list=%s, n=%d', onoff_list, n)
 
         for i in range(n):
             self.append_pulse_list1(onoff_list)
@@ -83,12 +83,12 @@ class WaveForm:
 
         <len_us> を0.071*1000*1000より大きくすると crate_wave() できない？
         """
-        self.logger.debug('freq_KHz:%d, len_us:%d', freq_KHz, len_us)
+        self._log.debug('freq_KHz:%d, len_us:%d', freq_KHz, len_us)
 
         wave_len_us = 1000000.0 / freq_KHz      # = 1/(Hz) * 1000 * 1000
         wave_n      = int(round(len_us / wave_len_us))
         on_usec     = int(round(wave_len_us * duty))
-        self.logger.debug('wave_len_usec: %d, wave_n: %d, on_usec: %d',
+        self._log.debug('wave_len_usec: %d, wave_n: %d, on_usec: %d',
                           wave_len_us, wave_n, on_usec)
 
         cur_usec = 0
@@ -104,9 +104,9 @@ class Wave(WaveForm):
     PIN_PWM = [12, 13, 18]
 
     def __init__(self, pi, pin, debug=False):
-        self._debug = debug
-        self.logger = get_logger(__class__.__name__, debug)
-        self.logger.debug('pin: %d', pin)
+        self._dbg = debug
+        self._log = get_logger(__class__.__name__, debug)
+        self._log.debug('pin: %d', pin)
 
         self.pi  = pi
         self.pin = pin
@@ -115,13 +115,13 @@ class Wave(WaveForm):
             msg = 'pin:%d is one of PWM pins:%s' % (pin, self.PIN_PWM)
             raise ValueError(msg)
 
-        super().__init__(self.pin, debug=self._debug)
+        super().__init__(self.pin, debug=self._dbg)
         self.wave = None
 
         # self.pi.wave_add_new()
 
     def create_wave(self):
-        self.logger.debug('len(waveform): %d', len(self.waveform))
+        self._log.debug('len(waveform): %d', len(self.waveform))
 
         self.pi.wave_add_generic(self.waveform)
         self.wave = self.pi.wave_create()
@@ -145,9 +145,9 @@ class IrSend:
     MSG_OK = IrConfig.MSG_OK
 
     def __init__(self, pin=DEF_PIN, load_conf=False, debug=False):
-        self._debug = debug
-        self.logger = get_logger(__class__.__name__, debug)
-        self.logger.debug('pin: %d', pin)
+        self._dbg = debug
+        self._log = get_logger(__class__.__name__, debug)
+        self._log.debug('pin: %d', pin)
 
         self.pin = pin
         self.tick = 0
@@ -160,46 +160,46 @@ class IrSend:
 
         self.irconf = None
         if load_conf:
-            self.irconf = IrConfig(load_all=True, debug=self._debug)
-            self.logger.debug('data=%s', self.irconf.data)
+            self.irconf = IrConfig(load_all=True, debug=self._dbg)
+            self._log.debug('data=%s', self.irconf.data)
             if self.irconf.data is None:
-                self.logger.error('no config data')
+                self._log.error('no config data')
 
     def reload_conf(self):
-        self.logger.debug('')
+        self._log.debug('')
         msg = self.irconf.reload_all()
         return msg
 
     def clean_wave(self):
-        self.logger.debug('')
+        self._log.debug('')
         self.clear_wave_hash()
         self.pi.wave_clear()
 
     def end(self):
-        self.logger.debug('')
+        self._log.debug('')
         self.clean_wave()
         self.pi.stop()
-        self.logger.debug('done')
+        self._log.debug('done')
 
     def print_signal(self, signal):
-        self.logger.debug('signal:%s', signal)
+        self._log.debug('signal:%s', signal)
 
         for i, interval in enumerate(self.signal):
             print('%s %d' % (self.VAL_STR[i % 2], interval))
 
     def clear_wave_hash(self):
-        self.logger.debug('')
+        self._log.debug('')
         self.clear_pulse_wave_hash()
         self.clear_space_wave_hash()
 
     def create_pulse_wave1(self, usec, freq=DEF_FREQ, duty=DEF_DUTY):
-        self.logger.debug('usec: %d, freq=%d', usec, freq)
-        wave = Wave(self.pi, self.pin, debug=self._debug)
+        self._log.debug('usec: %d, freq=%d', usec, freq)
+        wave = Wave(self.pi, self.pin, debug=self._dbg)
         wave.append_carrier(freq, duty, usec)
         return wave.create_wave()
 
     def clear_pulse_wave_hash(self):
-        self.logger.debug('')
+        self._log.debug('')
 
         for usec in self.pulse_wave_hash:
             self.pi.wave_delete(self.pulse_wave_hash[usec])
@@ -207,16 +207,16 @@ class IrSend:
         self.pulse_wave_hash = {}
 
     def create_pulse_wave(self, usec):
-        self.logger.debug('usec: %d', usec)
+        self._log.debug('usec: %d', usec)
 
         if usec not in self.pulse_wave_hash:
             self.pulse_wave_hash[usec] = self.create_pulse_wave1(usec)
-            self.logger.debug('pulse_wave_hash: %s', self.pulse_wave_hash)
+            self._log.debug('pulse_wave_hash: %s', self.pulse_wave_hash)
 
         return self.pulse_wave_hash[usec]
 
     def clear_space_wave_hash(self):
-        self.logger.debug('')
+        self._log.debug('')
 
         for usec in self.space_wave_hash:
             self.pi.wave_delete(self.space_wave_hash[usec])
@@ -224,17 +224,17 @@ class IrSend:
         self.space_wave_hash = {}
 
     def create_space_wave1(self, usec):
-        self.logger.debug('usec: %d', usec)
-        wave = Wave(self.pi, self.pin, debug=self._debug)
+        self._log.debug('usec: %d', usec)
+        wave = Wave(self.pi, self.pin, debug=self._dbg)
         wave.append_null(int(round(usec)))
         return wave.create_wave()
 
     def create_space_wave(self, usec):
-        self.logger.debug('usec: %d', usec)
+        self._log.debug('usec: %d', usec)
 
         if usec not in self.space_wave_hash:
             self.space_wave_hash[usec] = self.create_space_wave1(usec)
-            self.logger.debug('space_wave_hash: %s', self.space_wave_hash)
+            self._log.debug('space_wave_hash: %s', self.space_wave_hash)
 
         return self.space_wave_hash[usec]
 
@@ -247,12 +247,12 @@ class IrSend:
 
         repeat: int
         """
-        self.logger.debug('raw_data=%s, repeat=%s', raw_data, repeat)
+        self._log.debug('raw_data=%s, repeat=%s', raw_data, repeat)
 
         if len(raw_data) <= self.SIG_BITS_MIN:
             if len(raw_data) == 0:
-                self.logger.debug('%s: no signal', raw_data)
-            self.logger.warning('sig is too short: %s .. ignored', raw_data)
+                self._log.debug('%s: no signal', raw_data)
+            self._log.warning('sig is too short: %s .. ignored', raw_data)
             return False
 
         self.clear_wave_hash()
@@ -264,7 +264,7 @@ class IrSend:
 
             w.append(self.create_pulse_wave(pulse))
             w.append(self.create_space_wave(space))
-        self.logger.debug('total_us: %d', total_us)
+        self._log.debug('total_us: %d', total_us)
 
         for i in range(repeat):
             self.pi.wave_chain(w)
@@ -278,12 +278,12 @@ class IrSend:
         return True
 
     def send(self, dev_name, button_name):
-        self.logger.debug('dev_name=%s, button_name=%s', dev_name, button_name)
+        self._log.debug('dev_name=%s, button_name=%s', dev_name, button_name)
 
         if self.irconf is None:
-            self.irconf = IrConfig(load_all=True, debug=self._debug)
+            self.irconf = IrConfig(load_all=True, debug=self._dbg)
             if self.irconf.data is None:
-                self.logger.error('loading config files: failed')
+                self._log.error('loading config files: failed')
                 return False
 
         raw_data, repeat = self.irconf.get_raw_data(dev_name, button_name)
@@ -292,7 +292,7 @@ class IrSend:
         return self.send_raw_data(raw_data, repeat)
 
     def get_dev_list(self):
-        self.logger.debug('')
+        self._log.debug('')
 
         dev_list = []
         for d in self.irconf.data:
@@ -307,11 +307,11 @@ class IrSend:
         ret: {'macro': {'[m1]': 'mdata1', '[m2]': 'mdata2'},
               'buttons': {'b1': 'bdata1', 'b2': 'bdata2'}}
         """
-        self.logger.debug('dev_name=%s', dev_name)
+        self._log.debug('dev_name=%s', dev_name)
 
         dev = self.irconf.get_dev(dev_name)
         if dev is None:
-            self.logger.warning('%s: no such device', dev_name)
+            self._log.warning('%s: no such device', dev_name)
             return None
 
         ret = {'macro': dev['data']['macro'],
@@ -330,9 +330,9 @@ class App:
     MSG_END         = '__end__'
 
     def __init__(self, args, n, interval, pin, debug=False):
-        self._debug = debug
-        self.logger = get_logger(__class__.__name__, self._debug)
-        self.logger.debug('args=%s, n=%d, interval=%d, pin=%d',
+        self._dbg = debug
+        self._log = get_logger(__class__.__name__, self._dbg)
+        self._log.debug('args=%s, n=%d, interval=%d, pin=%d',
                           args, n, interval, pin)
 
         if len(args) == 0:
@@ -345,18 +345,18 @@ class App:
         self.interval = interval
         self.pin      = pin
 
-        self.irsend = IrSend(self.pin, load_conf=True, debug=self._debug)
+        self.irsend = IrSend(self.pin, load_conf=True, debug=self._dbg)
 
         self.msgq = queue.Queue()
         self.th_worker = threading.Thread(target=self.worker)
         self.th_worker.start()
 
     def main(self):
-        self.logger.debug('')
+        self._log.debug('')
 
         if self.dev_name == '':
             msg = [self.MSG_LIST, '']
-            self.logger.debug('msg=%s', msg)
+            self._log.debug('msg=%s', msg)
             self.msgq.put(msg)
             self.end_main()
             return
@@ -365,7 +365,7 @@ class App:
 
         if len(self.buttons) == 0:
             msg = [self.dev_name, self.MSG_LIST]
-            self.logger.debug('msg=%s', msg)
+            self._log.debug('msg=%s', msg)
             self.msgq.put(msg)
             self.end_main()
             return
@@ -377,7 +377,7 @@ class App:
             for b in self.buttons:
                 print('  button: %s' % b)
                 msg = [self.dev_name, b]
-                self.logger.debug('msg=%s', msg)
+                self._log.debug('msg=%s', msg)
                 self.msgq.put([self.dev_name, b])
                 if self.interval > 0:
                     print('   sleep: %.1f sec' % self.interval)
@@ -386,10 +386,10 @@ class App:
         self.end_main()
 
     def end_main(self):
-        self.logger.debug('')
+        self._log.debug('')
 
         self.msgq.put([self.MSG_END, ''])
-        self.logger.debug('join()')
+        self._log.debug('join()')
         self.th_worker.join()
 
     def worker(self):
@@ -407,41 +407,41 @@ class App:
           [MSG_END, '']:           終了
 
         """
-        self.logger.debug('')
+        self._log.debug('')
 
         while True:
             msg = self.msgq.get()
-            self.logger.debug('msg=%s', msg)
+            self._log.debug('msg=%s', msg)
 
             (dev_name, button_name) = msg
 
             if dev_name == self.MSG_END:
-                self.logger.debug('msg:MSG_END')
+                self._log.debug('msg:MSG_END')
                 break
 
             if dev_name == self.MSG_SLEEP:
-                self.logger.debug('msg:[MSG_SLEEP, %s]', button_name)
+                self._log.debug('msg:[MSG_SLEEP, %s]', button_name)
                 time.sleep(int(button_name))
                 continue
 
             if dev_name == self.MSG_LIST:
-                self.logger.debug('msg:MSG_LIST')
+                self._log.debug('msg:MSG_LIST')
                 # show device list
                 self.show_dev_list()
                 break
 
             if button_name == self.MSG_LIST:
-                self.logger.debug('msg:[%s, MSG_LIST]', dev_name)
+                self._log.debug('msg:[%s, MSG_LIST]', dev_name)
                 # show button list
                 self.show_button_list(dev_name)
                 break
 
             if not self.irsend.send(dev_name, button_name):
-                self.logger.error('%s,%s: sending failed',
+                self._log.error('%s,%s: sending failed',
                                   dev_name, button_name)
             time.sleep(0.1)
 
-        self.logger.debug('done')
+        self._log.debug('done')
 
     def end(self):
         """
@@ -451,36 +451,36 @@ class App:
         ``MSG_END``を格納して、``th_worker``スレッドが終了するの待つ。
 
         """
-        self.logger.debug('')
+        self._log.debug('')
 
         if self.th_worker.is_alive():
             count = 0
             while not self.msgq.empty():
                 count += 1
-                self.logger.debug('msgq.get()[%d]', count)
+                self._log.debug('msgq.get()[%d]', count)
                 self.msgq.get()
             self.msgq.put([self.MSG_END, ''])
-            self.logger.debug('join()')
+            self._log.debug('join()')
             self.th_worker.join()
 
         self.irsend.end()
         print('done')
-        self.logger.debug('done')
+        self._log.debug('done')
 
     def show_dev_list(self):
-        self.logger.debug('')
+        self._log.debug('')
 
         for d in self.irsend.get_dev_list():
             print('%s' % d)
 
     def show_button_list(self, dev_name):
-        self.logger.debug('dev_name=%s', dev_name)
+        self._log.debug('dev_name=%s', dev_name)
 
         ret = self.irsend.get_macro_and_button(dev_name)
         if ret is None:
             print('%s: no such device' % dev_name)
             return
-        self.logger.debug('ret=%s', ret)
+        self._log.debug('ret=%s', ret)
 
         macro = ret['macro']
         for m in macro:

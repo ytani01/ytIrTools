@@ -22,9 +22,9 @@ class SampleCmd(Cmd):
     CMD_NAME = ['aaa', 'bbb']
 
     def __init__(self, init_param=(0,), debug=False):
-        self._debug = debug
-        self._logger = get_logger(__class__.__name__, self._debug)
-        self._logger.debug('init_param=%s', init_param)
+        self._dbg = debug
+        self._log = get_logger(__class__.__name__, self._dbg)
+        self._log.debug('init_param=%s', init_param)
 
         # コマンド追加
         self.add_cmd(self.CMD_NAME[0], None, self.cmd_q_aaa, 'aaa')
@@ -34,15 +34,15 @@ class SampleCmd(Cmd):
         self._count = init_param[0]
 
         # 最後に super()__init__()
-        super().__init__(debug=self._debug)
+        super().__init__(debug=self._dbg)
 
     def cmd_q_aaa(self, args):
-        self._logger.debug('args=%a', args)
+        self._log.debug('args=%a', args)
 
         return self.RC_OK, self._count
 
     def cmd_q_bbb(self, args):
-        self._logger.debug('args=%a', args)
+        self._log.debug('args=%a', args)
 
         if len(args) < 2:
             return self.RC_NG, "error"
@@ -52,14 +52,14 @@ class SampleCmd(Cmd):
         return self.RC_OK, ret
 
     def main(self):
-        self._logger.debug('')
+        self._log.debug('')
 
         while self._active:
             print(self._count)
             self._count += 1
             time.sleep(1)
 
-        self._logger.debug('done')
+        self._log.debug('done')
 
 
 #####

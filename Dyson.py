@@ -23,25 +23,25 @@ class Dyson:
     DEV_NAME        = 'dyson_am05'
 
     def __init__(self, dev_name=DEV_NAME, serial_max=SERIAL_MAX, debug=False):
-        self.debug = debug
-        self.logger = get_logger(__class__.__name__, self.debug)
-        self.logger.debug('')
+        self._dbg = debug
+        self._log = get_logger(__class__.__name__, self._dbg)
+        self._log.debug('')
 
         self.dev_name   = dev_name
         self.serial_max = serial_max
-        self.logger.debug('dev_name=%s, serial_max=%d', dev_name, serial_max)
+        self._log.debug('dev_name=%s, serial_max=%d', dev_name, serial_max)
 
     def get_serial_num(self):
-        self.logger.debug('')
+        self._log.debug('')
 
         with open(self.SERIAL_NUM_FILE, 'r') as f:
             line = f.readline()
-            self.logger.debug('line=%s', line)
+            self._log.debug('line=%s', line)
 
         serial_num = int(line) + 1
         if serial_num > self.SERIAL_MAX:
             serial_num = 0
-        self.logger.debug('serial_num=%d', serial_num)
+        self._log.debug('serial_num=%d', serial_num)
 
         with open(self.SERIAL_NUM_FILE, 'w') as f:
             f.write(str(serial_num))

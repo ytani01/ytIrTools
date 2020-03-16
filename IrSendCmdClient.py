@@ -36,7 +36,7 @@ class IrSendCmdClient(TcpCmdClient):
 
         ボタンを複数指定可能: どれかが NG だと、最後の NGを返す。
         """
-        self._logger.debug('args=%a', args)
+        self._log.debug('args=%a', args)
 
         args = [self.CMD_NAME] + list(args)
 
@@ -51,31 +51,31 @@ class IrSendCmdClient(TcpCmdClient):
         for b in args[2:]:
             ret1 = super().send_recv(args[:2] + [b],
                                      timeout=timeout, newline=newline)
-            self._logger.debug('ret1=%a', ret1)
+            self._log.debug('ret1=%a', ret1)
             try:
                 if json.loads(ret1)['rc'] != IrSendCmd.RC_OK:
                     ret = ret1
-                    self._logger.debug('ret1=%s', ret1)
+                    self._log.debug('ret1=%s', ret1)
             except Exception as e:
-                self._logger.warning('ret1=%a, %s: %s', ret1, type(e), e)
+                self._log.warning('ret1=%a, %s: %s', ret1, type(e), e)
 
         return ret
 
     def reply2str(self, rep_str):
-        self._logger.debug('rep_str=%a', rep_str)
+        self._log.debug('rep_str=%a', rep_str)
 
         rep = rep_str.split('\r\n')
-        self._logger.debug('rep=%a', rep)
+        self._log.debug('rep=%a', rep)
 
         ret = json.loads(rep[0])
-        self._logger.debug('ret=%a', ret)
+        self._log.debug('ret=%a', ret)
 
         if type(ret) != dict:
-            self._logger.warning('invalid reply foramt')
+            self._log.warning('invalid reply foramt')
             return ret
 
         if 'rc' not in ret:
-            self._logger.warning('invalid reply foramt')
+            self._log.warning('invalid reply foramt')
             ret_str = json.dumps(ret, indent=2, ensure_ascii=False)
             return ret_str
 

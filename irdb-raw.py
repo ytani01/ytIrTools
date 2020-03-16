@@ -15,16 +15,16 @@ from MyLogger import get_logger
 #####
 class App:
     def __init__(self, file, debug=False):
-        self._debug = debug
-        self._logger = get_logger(__class__.__name__, self._debug)
-        self._logger.debug('file=%s', file)
+        self._dbg = debug
+        self._log = get_logger(__class__.__name__, self._dbg)
+        self._log.debug('file=%s', file)
 
         self.file = file
 
-        self.an = IrAnalyze(debug=self._debug)
+        self.an = IrAnalyze(debug=self._dbg)
 
     def main(self):
-        self._logger.debug('')
+        self._log.debug('')
 
         with open(self.file, 'r') as f:
             line = f.readlines()
@@ -38,17 +38,17 @@ class App:
                     raw_data.append([int(w)])
                 else:
                     raw_data[-1].append(-int(w))
-                self._logger.debug('raw_data=%s', raw_data)
+                self._log.debug('raw_data=%s', raw_data)
                 i += 1
-        self._logger.debug('raw_data=%s', raw_data)
+        self._log.debug('raw_data=%s', raw_data)
 
         result = self.an.analyze(raw_data)
-        self._logger.debug('result=%s', result)
+        self._log.debug('result=%s', result)
 
         print(self.an.json_dumps(result))
 
     def end(self):
-        self._logger.debug('')
+        self._log.debug('')
 
 
 #####

@@ -96,15 +96,15 @@ class Cmd:
     CMD_SHUTDOWN = 'shutdown9999'
 
     def __init__(self, init_param=None, port=DEF_PORT, debug=False):
-        self._debug = debug
-        self._logger = get_logger(__class__.__name__, self._debug)
-        self._logger.debug('init_param=%s, port=%s', init_param, port)
+        self._dbg = debug
+        self._log = get_logger(__class__.__name__, self._dbg)
+        self._log.debug('init_param=%s, port=%s', init_param, port)
 
         if port is None:
             self._port = self.DEF_PORT
         else:
             self._port = port
-        self._logger.debug('_port=%d', self._port)
+        self._log.debug('_port=%d', self._port)
 
         self._active = True  # main()の終了条件に使用
 
@@ -119,22 +119,22 @@ class Cmd:
         """
         override
         """
-        self._logger.debug('')
+        self._log.debug('')
 
         while self._active:
             time.sleep(1)
 
         self._active = False
-        self._logger.debug('done')
+        self._log.debug('done')
 
     def end(self):
-        self._logger.debug('')
-        self._logger.debug('done')
+        self._log.debug('')
+        self._log.debug('done')
 
     def start(self):
-        self._logger.debug('')
+        self._log.debug('')
         self._active = True
-        self._logger.debug('done')
+        self._log.debug('done')
 
     def stop_main(self):
         """
@@ -143,18 +143,18 @@ class Cmd:
         その後の終了処理(資源の開放やサブスレッドの終了など)は、
         end() で行う。
         """
-        self._logger.debug('')
+        self._log.debug('')
         self._active = False
-        self._logger.debug('done')
+        self._log.debug('done')
 
     def add_cmd(self, name, func_i, func_q, help_str):
-        self._logger.debug('name=%a, func_i=%a, func_q=%a, help_str=%a',
+        self._log.debug('name=%a, func_i=%a, func_q=%a, help_str=%a',
                            name, func_i, func_q, help_str)
 
         try:
             self._cmd
         except AttributeError:
-            self._logger.debug('create: self._cmd')
+            self._log.debug('create: self._cmd')
             self._cmd = {}
 
         self._cmd[name] = {
@@ -167,7 +167,7 @@ class Cmd:
         """
         コマンド一覧
         """
-        self._logger.debug('args=%a', args)
+        self._log.debug('args=%a', args)
 
         if len(args) >= 2:
             if args[1] in self._cmd:
@@ -194,7 +194,7 @@ class Cmd:
 
         ここでは、引数の事前チェックのみ。
         """
-        self._logger.debug('args=%a', args)
+        self._log.debug('args=%a', args)
 
         try:
             sleep_sec = float(args[1])
@@ -204,7 +204,7 @@ class Cmd:
         else:
             rc = self.RC_CONT
             msg = 'sleep_sec=%s' % sleep_sec
-        self._logger.debug(msg)
+        self._log.debug(msg)
         return rc, msg
 
     def cmd_q_sleep(self, args):
@@ -215,7 +215,7 @@ class Cmd:
         事前チェックされたパラメータ(秒数)受け取り、
         実際にスリープする。
         """
-        self._logger.debug('args=%a', args)
+        self._log.debug('args=%a', args)
 
         rc = self.RC_OK
 
@@ -223,14 +223,14 @@ class Cmd:
         msg = '%s: sleep_sec=%s' % (args[0], sleep_sec)
 
         time.sleep(sleep_sec)
-        self._logger.debug('sleep:done')
+        self._log.debug('sleep:done')
         return rc, msg
 
     def cmd_i_exit(self, args):
         """
         接続を切断する。
         """
-        self._logger.debug('args=%a', args)
+        self._log.debug('args=%a', args)
         return self.RC_OK, None
 
     def cmd_i_shutdown(self, args):
@@ -242,7 +242,7 @@ class Cmd:
         受理 (ACCEPT) する。
 
         """
-        self._logger.debug('args=%a', args)
+        self._log.debug('args=%a', args)
 
         if len(args) == 1:
             return self.RC_ACCEPT, 'sleep_sec=0'
@@ -255,7 +255,7 @@ class Cmd:
         else:
             rc = self.RC_ACCEPT
             msg = 'sleep_sec=%s' % sleep_sec
-        self._logger.debug(msg)
+        self._log.debug(msg)
         return rc, msg
 
     def cmd_q_shutdown(self, args):
@@ -268,7 +268,7 @@ class Cmd:
         メインルーチン (CmdServerApp:main)で、
         コマンド名をキーに判断され、シャットダウン処理が実行される。
         """
-        self._logger.debug('args=%a', args)
+        self._log.debug('args=%a', args)
 
         rc = self.RC_OK
 
@@ -278,10 +278,10 @@ class Cmd:
             sleep_sec = float(args[1])
 
         msg = '%s: sleep_sec=%s' % (args[0], sleep_sec)
-        self._logger.debug(msg)
+        self._log.debug(msg)
 
         time.sleep(sleep_sec)
-        self._logger.debug('sleep:done')
+        self._log.debug('sleep:done')
 
         return rc, msg
 
@@ -295,9 +295,9 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
     EOF = '\x04'
 
     def __init__(self, req, c_addr, svr):
-        self._debug = svr._debug
-        self._logger = get_logger(__class__.__name__, self._debug)
-        self._logger.debug('c_addr=%s', c_addr)
+        self._dbg = svr._dbg
+        self._log = get_logger(__class__.__name__, self._dbg)
+        self._log.debug('c_addr=%s', c_addr)
 
         self._svr = svr
 
@@ -306,40 +306,40 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
 
         # 変数名は固定: self.request.recv() のタイムアウト
         self.timeout = self.DEF_HANDLE_TIMEOUT
-        self._logger.debug('timeout=%s sec', self.timeout)
+        self._log.debug('timeout=%s sec', self.timeout)
 
         return super().__init__(req, c_addr, svr)
 
     def setup(self):
-        self._logger.debug('_active=%s', self._active)
+        self._log.debug('_active=%s', self._active)
         self._active = True
-        self._logger.debug('_active=%s', self._active)
+        self._log.debug('_active=%s', self._active)
         return super().setup()
 
     def finish(self):
-        self._logger.debug('_active=%s', self._active)
+        self._log.debug('_active=%s', self._active)
         self._active = False
-        self._logger.debug('_active=%s', self._active)
+        self._log.debug('_active=%s', self._active)
         return super().finish()
 
     def set_timeout(self, timeout=DEF_HANDLE_TIMEOUT):
-        self._debug('timeout=%s', timeout)
+        self._dbg('timeout=%s', timeout)
         self.timeout = timeout
 
     def net_write(self, msg, enc='utf-8'):
-        self._logger.debug('msg=%a, enc=%s', msg, enc)
+        self._log.debug('msg=%a, enc=%s', msg, enc)
 
         if enc != '':
             msg = msg.encode(enc)
-            self._logger.debug('msg=%a', msg)
+            self._log.debug('msg=%a', msg)
 
         try:
             self.wfile.write(msg)
         except Exception as e:
-            self._logger.warning('%s:%s.', type(e), e)
+            self._log.warning('%s:%s.', type(e), e)
 
     def send_reply(self, rc, msg=None, cont=False):
-        self._logger.debug('rc=%a, msg=%a, cont=%s', rc, msg, cont)
+        self._log.debug('rc=%a, msg=%a, cont=%s', rc, msg, cont)
 
         if msg is None:
             rep = {'rc': rc}
@@ -349,14 +349,14 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
         rep_str += '\r\n'
         if not cont:
             rep_str += self.EOF
-        self._logger.debug('rep_str=%a', rep_str)
+        self._log.debug('rep_str=%a', rep_str)
         self.net_write(rep_str)
 
     def handle(self):
-        self._logger.debug('')
+        self._log.debug('')
 
         while self._active:
-            self._logger.debug('wait net_data')
+            self._log.debug('wait net_data')
             try:
                 # in_data = self.rfile.readline().strip()
                 #                ↓
@@ -366,8 +366,8 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
                 in_data = self.request.recv(512).strip()
 
             except socket.timeout as e:
-                self._logger.debug('%s:%s.', type(e), e)
-                self._logger.debug('_svr._active=%s', self._svr._active)
+                self._log.debug('%s:%s.', type(e), e)
+                self._log.debug('_svr._active=%s', self._svr._active)
                 if self._svr._active:
                     # サーバーが生きている場合は、継続
                     continue
@@ -375,15 +375,15 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
                     self.send_reply(Cmd.RC_NG, 'server is dead !')
                     break
             except Exception as e:
-                self._logger.warning('%s:%s.', type(e), e)
+                self._log.warning('%s:%s.', type(e), e)
                 msg = 'error %s:%s' % (type(e), e)
                 self.send_reply(Cmd.RC_NG, msg)
                 break
             else:
-                self._logger.debug('in_data=%a', in_data)
+                self._log.debug('in_data=%a', in_data)
 
             if len(in_data) == 0 or in_data == b'\x04':
-                self._logger.debug('disconnected')
+                self._log.debug('disconnected')
                 break
 
             # decode
@@ -391,25 +391,25 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
                 decoded_data = in_data.decode('utf-8')
             except UnicodeDecodeError as e:
                 msg = '%s:%s .. ignored' % (type(e), e)
-                self._logger.error(msg)
+                self._log.error(msg)
                 self.send_reply(Cmd.RC_NG, msg)
                 break
             else:
-                self._logger.debug('decoded_data=%a', decoded_data)
+                self._log.debug('decoded_data=%a', decoded_data)
 
             # get args
             args = decoded_data.split()
-            self._logger.debug('args=%s', args)
+            self._log.debug('args=%s', args)
             if len(args) == 0:
                 msg = 'no command'
-                self._logger.warning(msg)
+                self._log.warning(msg)
                 self.send_reply(Cmd.RC_NG, msg)
                 break
 
             # check command
             if args[0] not in self._svr._app._cmd._cmd:
                 msg = '%s: no such command .. ignored' % args[0]
-                self._logger.error(msg)
+                self._log.error(msg)
                 self.send_reply(Cmd.RC_NG, msg)
                 continue
 
@@ -417,13 +417,13 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
                 #
                 # interactive command
                 #
-                self._logger.info('call %s: %a', Cmd.FUNC_I, args)
+                self._log.info('call %s: %a', Cmd.FUNC_I, args)
                 rc, msg = self._svr._app._cmd._cmd[args[0]][Cmd.FUNC_I](args)
-                self._logger.info('rc=%s, msg=%s', rc, msg)
+                self._log.info('rc=%s, msg=%s', rc, msg)
 
                 if args[0] == Cmd.CMD_EXIT:
                     self._active = False
-                    self._logger.debug('_active=%s', self._active)
+                    self._log.debug('_active=%s', self._active)
 
                 if rc != Cmd.RC_CONT and rc != Cmd.RC_ACCEPT:
                     self.send_reply(rc, msg)
@@ -435,7 +435,7 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
             # check FANC_Q
             if self._svr._app._cmd._cmd[args[0]][Cmd.FUNC_Q] is None:
                 msg2 = '%s: %s is None .. ignored' % (args[0], Cmd.FUNC_Q)
-                self._logger.warning(msg2)
+                self._log.warning(msg2)
                 if msg is None:
                     self.send_reply(Cmd.RC_OK, msg2)
                 else:
@@ -450,7 +450,7 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
             qsize = self._svr._app._cmdq.qsize()
             if qsize > 100:
                 msg = 'qsize=%d: server busy' % qsize
-                self._logger.warning(msg)
+                self._log.warning(msg)
                 self.send_reply(Cmd.RC_NG, msg)
                 continue
 
@@ -459,28 +459,28 @@ class CmdServerHandler(socketserver.StreamRequestHandler):
                 self._svr._app._cmdq.put((args, self._myq), block=False)
             except Exception as e:
                 msg = '%s:%s' % (type(e), e)
-                self._logger.error(msg)
+                self._log.error(msg)
                 self.send_reply(Cmd.RC_NG, msg)
                 continue
 
             # if _myq is None (RC_ACCEPT), send reply now
             if self._myq is None:
-                self._logger.debug('reply queue is None .. send reply')
+                self._log.debug('reply queue is None .. send reply')
                 self.send_reply(Cmd.RC_OK, msg)
                 continue
 
             # wait result from _myq
-            self._logger.debug('wait result')
+            self._log.debug('wait result')
             rc, msg = self._myq.get()
             if rc == Cmd.RC_OK:
-                self._logger.debug('rc=%s, msg=%s', rc, msg)
+                self._log.debug('rc=%s, msg=%s', rc, msg)
             else:
-                self._logger.error('rc=%s, msg=%s', rc, msg)
+                self._log.error('rc=%s, msg=%s', rc, msg)
 
             # send reply
             self.send_reply(rc, msg)
 
-        self._logger.debug('done')
+        self._log.debug('done')
 
 
 class CmdServer(socketserver.ThreadingTCPServer):
@@ -488,9 +488,9 @@ class CmdServer(socketserver.ThreadingTCPServer):
     override 不要
     """
     def __init__(self, app, port, debug=False):
-        self._debug = debug
-        self._logger = get_logger(__class__.__name__, self._debug)
-        self._logger.debug('port=%s', port)
+        self._dbg = debug
+        self._log = get_logger(__class__.__name__, self._dbg)
+        self._log.debug('port=%s', port)
 
         self._app = app
         self._port = port
@@ -502,37 +502,37 @@ class CmdServer(socketserver.ThreadingTCPServer):
             try:
                 super().__init__(('', self._port), CmdServerHandler)
                 self._active = True
-                self._logger.info('_active=%s,_port=%s',
+                self._log.info('_active=%s,_port=%s',
                                   self._active, self._port)
             except PermissionError as e:
-                self._logger.error('%s:%s.', type(e), e)
+                self._log.error('%s:%s.', type(e), e)
                 raise
             except OSError as e:
-                self._logger.error('%s:%s .. retry', type(e), e)
+                self._log.error('%s:%s .. retry', type(e), e)
                 time.sleep(5)
             except Exception as e:
-                self._logger.error('%s:%s.', type(e), e)
+                self._log.error('%s:%s.', type(e), e)
                 raise
 
-        self._logger.debug('done')
+        self._log.debug('done')
 
     def serve_forever(self):
-        self._logger.debug('start')
+        self._log.debug('start')
         super().serve_forever()
-        self._logger.debug('done')
+        self._log.debug('done')
 
     """
     def service_actions(self):
-        self._logger.debug('')
+        self._log.debug('')
         super().service_actions()
-        self._logger.debug('done')
+        self._log.debug('done')
     """
 
     def end(self):
-        self._logger.debug('')
+        self._log.debug('')
         self.shutdown()  # serve_forever() を終了させる
         self._active = False  # handle()を終了させる
-        self._logger.debug('done')
+        self._log.debug('done')
 
 
 class CmdServerApp:
@@ -540,64 +540,64 @@ class CmdServerApp:
     """
     def __init__(self, cmd_class, init_param=None, port=Cmd.DEF_PORT,
                  debug=False):
-        self._debug = debug
-        self._logger = get_logger(__class__.__name__, self._debug)
-        self._logger.debug('cmd_class=%s, init_param=%s, port=%s',
+        self._dbg = debug
+        self._log = get_logger(__class__.__name__, self._dbg)
+        self._log.debug('cmd_class=%s, init_param=%s, port=%s',
                            cmd_class, init_param, port)
 
         self._cmdq = queue.Queue()
 
-        self._cmd = cmd_class(init_param, port, debug=self._debug)
-        self._svr = CmdServer(self, self._cmd._port, self._debug)
+        self._cmd = cmd_class(init_param, port, debug=self._dbg)
+        self._svr = CmdServer(self, self._cmd._port, self._dbg)
         self._svr_th = threading.Thread(target=self._svr.serve_forever,
                                         daemon=True)
         self._cmd_worker_th = threading.Thread(target=self.cmd_worker,
                                                daemon=True)
 
     def cmd_worker(self):
-        self._logger.debug('')
+        self._log.debug('')
 
         loop = True
 
         while loop:
             args, repq = self._cmdq.get()
-            self._logger.info('args=%a', args)
+            self._log.info('args=%a', args)
 
             # check and call cmd
             if args[0] in self._cmd._cmd:
                 if self._cmd._cmd[args[0]][Cmd.FUNC_Q] is not None:
 
                     # call cmd
-                    self._logger.debug('call %s: %a', Cmd.FUNC_Q, args)
+                    self._log.debug('call %s: %a', Cmd.FUNC_Q, args)
                     rc, msg = self._cmd._cmd[args[0]][Cmd.FUNC_Q](args)
 
                     if rc == Cmd.RC_OK:
-                        self._logger.info('rc=%a, msg=%a', rc, msg)
+                        self._log.info('rc=%a, msg=%a', rc, msg)
                     else:
-                        self._logger.error('rc=%a, msg=%a', rc, msg)
+                        self._log.error('rc=%a, msg=%a', rc, msg)
                 else:
                     rc = Cmd.RC_NG
                     msg = '%s: no such %s .. ignored' % (args[0], Cmd.FUNC_Q)
-                    self._logger.error(msg)
+                    self._log.error(msg)
             else:
                 rc = Cmd.RC_NG
                 msg = '%s: no such command .. ignored' % args[0]
-                self._logger.error(msg)
+                self._log.error(msg)
 
             if repq is not None:
-                self._logger.debug('put reply')
+                self._log.debug('put reply')
                 repq.put((rc, msg))
 
             # shutdown check
             if args[0] == Cmd.CMD_SHUTDOWN:
-                self._logger.info('shutdown !!')
+                self._log.info('shutdown !!')
                 time.sleep(1)
                 break
 
             time.sleep(0.1)
 
         self._cmd.stop_main()
-        self._logger.debug('done')
+        self._log.debug('done')
 
     def main(self):
         self._svr_th.start()
@@ -605,18 +605,18 @@ class CmdServerApp:
 
         self._cmd.main()
 
-        self._logger.debug('done')
+        self._log.debug('done')
 
     def end(self):
-        self._logger.debug('')
+        self._log.debug('')
         while not self._cmdq.empty():
             args, repq = self._cmdq.get()
-            self._logger.debug('args=%s, repq=%s', args, repq)
+            self._log.debug('args=%s, repq=%s', args, repq)
             if repq is not None:
                 repq.put((Cmd.RC_NG, 'terminated'))
         self._svr.end()
         self._cmd.end()
-        self._logger.debug('done')
+        self._log.debug('done')
 
 
 import click

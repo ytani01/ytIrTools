@@ -2,7 +2,8 @@
 port = 51002
 
 [temp]
-topic = env1/temp
+topic = env2/temperature
+token = token_fAgsMSNhR9hCJOKm
 
 [aircon]
 dev_name = aircon

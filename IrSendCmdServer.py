@@ -28,9 +28,9 @@ class IrSendCmd(Cmd):
 
     def __init__(self, init_param=(IrSend.DEF_PIN,), port=DEF_PORT,
                  debug=False):
-        self._debug = debug
-        self._logger = get_logger(__class__.__name__, self._debug)
-        self._logger.debug('init_param=%s, port=%s', init_param, port)
+        self._dbg = debug
+        self._log = get_logger(__class__.__name__, self._dbg)
+        self._log.debug('init_param=%s, port=%s', init_param, port)
 
         # コマンド追加
         self.add_cmd(self.CMD_NAME, None, self.cmd_q_irsend, 'send IR signal')
@@ -40,7 +40,7 @@ class IrSendCmd(Cmd):
         self._irsend = IrSend(gpio, load_conf=True, debug=False)
 
         # 最後に super()__init__()
-        super().__init__(port=port, debug=self._debug)
+        super().__init__(port=port, debug=self._dbg)
 
     def cmd_q_irsend(self, args):
         """
@@ -55,7 +55,7 @@ class IrSendCmd(Cmd):
         引数2個: 赤外線リモコン信号送信
 
         """
-        self._logger.debug('args=%a', args)
+        self._log.debug('args=%a', args)
 
         if len(args) == 1:
             ret = self._irsend.get_dev_list()
@@ -68,7 +68,7 @@ class IrSendCmd(Cmd):
             if args[1] == self.SUBCMD['LOAD']:
                 msg = self._irsend.reload_conf()
                 if msg != self._irsend.MSG_OK:
-                    self._logger.error(msg)
+                    self._log.error(msg)
                     return self.RC_NG, msg
                 return self.RC_OK, 'reload config data'
             else:
@@ -77,7 +77,7 @@ class IrSendCmd(Cmd):
         m_and_b = self._irsend.get_macro_and_button(args[1])
         if m_and_b is None:
             msg = '%s: no such device' % args[1]
-            self._logger.error(msg)
+            self._log.error(msg)
             return self.RC_NG, msg
 
         if len(args) == 2:
@@ -92,22 +92,22 @@ class IrSendCmd(Cmd):
                 interval = float(args[2][1:])
             except Exception as e:
                 msg = '%s:%s' % (type(e), e)
-                self._logger.error(msg)
+                self._log.error(msg)
                 return self.RC_NG, msg
-            self._logger.debug('interval=%s', interval)
+            self._log.debug('interval=%s', interval)
             time.sleep(interval)
             return self.RC_OK, 'sleep %s sec' % interval
 
         if args[2] not in m_and_b['buttons']:
             msg = '%s:%s: no such button' % (args[1], args[2])
-            self._logger.error(msg)
+            self._log.error(msg)
             return self.RC_NG, msg
 
         try:
             ret = self._irsend.send(args[1], args[2])
         except Exception as e:
             msg = '%s %s' % (type(e), e)
-            self._logger.error(msg)
+            self._log.error(msg)
             return self.RC_NG, msg
 
         if not ret:

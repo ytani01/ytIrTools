@@ -12,9 +12,9 @@ from MyLogger import get_logger
 
 class A:
     def __init__(self, a, debug=False)
-        self.debug = debug
-        self.logger = get_logger(__class__.__name__, self.debug)
-        self.logger.debug('a=%s', a)
+        self._dbg = debug
+        self._log = get_logger(__class__.__name__, self._dbg)
+        self._log.debug('a=%s', a)
 --
 
 """
@@ -35,13 +35,13 @@ class MyLogger:
         self.console_handler.setLevel(DEBUG)
         self.console_handler.setFormatter(self.handler_fmt)
 
-        self.logger = getLogger(name)
-        self.logger.setLevel(INFO)
-        self.logger.addHandler(self.console_handler)
-        self.logger.propagate = False
+        self._log = getLogger(name)
+        self._log.setLevel(INFO)
+        self._log.addHandler(self.console_handler)
+        self._log.propagate = False
 
     def get_logger(self, name, debug):
-        logger = self.logger.getChild(name)
+        logger = self._log.getChild(name)
         if debug:
             logger.setLevel(DEBUG)
         else:

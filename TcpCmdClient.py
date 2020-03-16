@@ -28,15 +28,15 @@ class TcpCmdClient:
     EOL = b'\r\n'
 
     def __init__(self, host=DEF_SVR_HOST, port=DEF_SVR_PORT, debug=False):
-        self._debug = debug
-        self._logger = get_logger(__class__.__name__, self._debug)
-        self._logger.debug('host=%s, port=%s', host, port)
+        self._dbg = debug
+        self._log = get_logger(__class__.__name__, self._dbg)
+        self._log.debug('host=%s, port=%s', host, port)
 
         self._svr_host = host
         self._svr_port = port
 
     def end(self):
-        self._logger.debug('')
+        self._log.debug('')
 
     def send_recv(self, args, timeout=DEF_TIMEOUT, newline=False):
         """
@@ -44,7 +44,7 @@ class TcpCmdClient:
 
         timeout=0: 返信を受信しない
         """
-        self._logger.debug('args=%s, timeout=%s, newline=%s',
+        self._log.debug('args=%s, timeout=%s, newline=%s',
                            args, timeout, newline)
 
         args_str = ' '.join(list(args))
@@ -54,21 +54,21 @@ class TcpCmdClient:
         """
         timeout=0: 送信のみ、返信を受信しない
         """
-        self._logger.debug('args_str=%a, timeout=%s, newline=%s',
+        self._log.debug('args_str=%a, timeout=%s, newline=%s',
                            args_str, timeout, newline)
 
         if newline:
             args_str += '\r\n'
-            self._logger.debug('args_str=%a', args_str)
+            self._log.debug('args_str=%a', args_str)
 
         try:
             out_data = args_str.encode('utf-8')
         except UnicodeDecodeError as e:
             msg = '%s, %s' % (type(e), e)
-            self._logger.error(msg)
+            self._log.error(msg)
             return json.dumps({'rc': Cmd.RC_NG, 'msg': msg})
         else:
-            self._logger.debug('out_data=%a', out_data)
+            self._log.debug('out_data=%a', out_data)
 
         # Python3.6 以降は下記の記述ができるが、互換性のためあえて使わない。
         #
@@ -79,7 +79,7 @@ class TcpCmdClient:
             tn.write(out_data)
         except Exception as e:
             msg = '%s, %s' % (type(e), e)
-            self._logger.error(msg)
+            self._log.error(msg)
             return json.dumps({'rc': Cmd.RC_NG, 'msg': msg})
 
         if timeout == 0:
@@ -91,36 +91,36 @@ class TcpCmdClient:
                 try:
                     in_data = tn.read_until(self.EOF, timeout=timeout)
                 except Exception as e:
-                    self._logger.warning('%s:%s', type(e), e)
+                    self._log.warning('%s:%s', type(e), e)
                     break
                 else:
-                    self._logger.debug('in_data=%a', in_data)
+                    self._log.debug('in_data=%a', in_data)
 
                 if in_data == b'':
                     break
 
                 rep += in_data
-                self._logger.debug('rep=%a', rep)
+                self._log.debug('rep=%a', rep)
                 if self.EOF in rep:
-                    self._logger.debug('EOF')
+                    self._log.debug('EOF')
                     rep = rep[:-1]
                     break
         tn.close()
 
         if len(rep) == 0:
             msg = 'timeout'
-            self._logger.error(msg)
+            self._log.error(msg)
             return json.dumps({'rc': Cmd.RC_NG, 'msg': msg})
 
         rep_str = rep.decode('utf-8').strip()
-        self._logger.debug('rep_str=%a', rep_str)
+        self._log.debug('rep_str=%a', rep_str)
         return rep_str
 
     def reply2str(self, rep_str):
-        self._logger.debug('rep_str=%a', rep_str)
+        self._log.debug('rep_str=%a', rep_str)
 
         rep = rep_str.split('\r\n')
-        self._logger.debug('rep=%a', rep)
+        self._log.debug('rep=%a', rep)
 
         try:
             for r in rep:
@@ -136,30 +136,30 @@ class TcpCmdClientApp:
     def __init__(self, client_class, args, host, port,
                  timeout=TcpCmdClient.DEF_TIMEOUT, newline=False,
                  debug=False):
-        self._debug = debug
-        self._logger = get_logger(__class__.__name__, self._debug)
-        self._logger.debug('args=%s, host=%s, port=%d',
+        self._dbg = debug
+        self._log = get_logger(__class__.__name__, self._dbg)
+        self._log.debug('args=%s, host=%s, port=%d',
                            args, host, port)
-        self._logger.debug('timeout=%s, newline=%s', timeout, newline)
+        self._log.debug('timeout=%s, newline=%s', timeout, newline)
 
         self._args = args
-        self._cl = client_class(host, port, debug=self._debug)
+        self._cl = client_class(host, port, debug=self._dbg)
 
         self._timeout = timeout
         self._newline = newline
 
     def main(self):
-        self._logger.debug('')
+        self._log.debug('')
 
         rep_str = self._cl.send_recv(self._args, self._timeout, self._newline)
-        self._logger.debug('rep_str=%a', rep_str)
+        self._log.debug('rep_str=%a', rep_str)
 
         print(self._cl.reply2str(rep_str))
 
     def end(self):
-        self._logger.debug('')
+        self._log.debug('')
         self._cl.end()
-        self._logger.debug('done')
+        self._log.debug('done')
 
 
 import click
