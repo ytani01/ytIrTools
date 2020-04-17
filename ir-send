@@ -6,4 +6,4 @@ GITNAME="ytIrTools"
 
 . ${HOME}/bin/activate-${GITNAME}
 
-exec ${HOME}/bin/IrSendCmdClient.py $*
+exec IrSendCmdClient.py $*
