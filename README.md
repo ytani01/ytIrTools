@@ -35,10 +35,16 @@ $ git clone https://www.github.com/ytani01/ytIrTools.git
 $ cd ytIrTools
 $ ./setup.sh
 ```
-このとき、crontabの設定が上書きされます。
-直前の設定内容は、``${HOME}/tmp/crontab.bak``に保存されます。
-もし、必要なら、``crontab -e``コマンドなどで、設定を調整して下さい。
 
+#### crontab の設定 (自動起動、自動再起動)
+このとき、crontabの設定が上書きされます。
+直前の設定内容は、``crontab.bak``に保存されます。
+必要に応じて、``crontab -e``コマンドなどで、設定を調整して下さい。
+
+```bash
+$ crontab -l > crontab.bak
+$ crontab crontab.sample
+```
 
 ### Node-RED
 
@@ -63,7 +69,8 @@ bash < \(curl -sL https://raw.githubusercontent.com/node-red/linux-installers/ma
 
 ### [pigpiod](http://abyz.me.uk/rpi/pigpio/)
 
-事前に pigpiod を起動しておいてください。
+事前に pigpiod を起動する必要があります。
+上記設定を行えば、自動的に起動するので、下記を行う必要はありません。
 
 ```bash
 $ sudo pigpiod -t 0
@@ -78,8 +85,8 @@ $ sudo pigpiod -t 0
 
 ### ir-send (IrSendCmdClient.py) -- 赤外線信号コマンド
 
-実体は、``IrSendCmdClient.py``ですが、${HOME}/binの直下に、
-``ir-send``という名前でシンボリックリンクが作成されます。
+実体は、``IrSendCmdClient.py``です。
+(python venvを``activate``してから、このスクリプトを呼び出します。)
 
 デバイス名とボタン名を指定して、赤外線信号を送信する。
 デバイス名・ボタンの設定は後述。
@@ -116,8 +123,8 @@ $ ir-send.py @load
 
 ### ir-analyze (IrAnalyze.py) -- 赤外線信号受信・解析
 
-実体は、``IrAnalyze.py``ですが、${HOME}/binの直下に、
-``ir-analyze``と言う名前でシンボリックリンクが作成されます。
+実体は、``IrAnalyze.py``です。
+(python venvを``activate``してから、このスクリプトを呼び出します。)
 
 赤外線信号を受信して解析結果を表示する。
 

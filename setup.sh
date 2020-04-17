@@ -3,11 +3,8 @@
 # (c) 2020 Yoichi Tanibayashi
 #
 GITS="ytMQTT common_python"
-
 CMDS="IrAnalyze.py IrSendCmdServer.py IrSendCmdClient.py AutoAirconServer.py"
-
 BINCMDS="boot.sh ir-analyze ir-send dyson.sh dyson-temp.sh tv-light-level.sh"
-
 
 echo "GITS=${GITS}"
 echo "CMDS=${CMDS}"
@@ -46,9 +43,10 @@ fi
 
 IRCONF_D="${HOME}/.irconf.d"
 echo "IRCONF_D=${IRCONF_D}"
-
-MQTT_DIR="ytMQTT"
-echo "MQTT_DIR=${MQTT_DIR}"
+if [ ! -d ${IRCONF_D} ]; then
+    mkdir -pv ${IRCON_D}
+fi
+ln -sfv ${MYDIR}/irconf.d/* ${IRCONF_D}
 
 CRONTAB_FILE="crontab.sample"
 echo "CRONTAB_FILE=${CRONTAB_FILE}"
@@ -78,16 +76,14 @@ if [ -f requirements.txt ]; then
     pip3 install -r requirements.txt 
 fi
 
-# make symlink to activate venv
-#ln -sfv ${VIRTUAL_ENV}/bin/activate ${BINDIR}/activate-${GITNAME}
+# install Node-RED
+### T.B.D ###
 
-# install Node-RED ### T.B.D ###
-
-# AutoAircon
+# AutoAircon configuration files
 cp -v dot.autoaircon ${HOME}/.autoaircon 
 cp -v dot.autoaircon-param ${HOME}/.autoaircon-param
 
-# Commands
+# copy Command files
 for c in ${CMDS}; do
     ln -sfv ${MYDIR}/$c ${BINDIR}/$c
 done
@@ -96,17 +92,10 @@ for c in ${BINCMDS}; do
     ln -sfv ${MYDIR}/$c ${HOMEBIN}/$c
 done
 
-# irconf
-if [ ! -d ${IRCONF_D} ]; then
-    mkdir -pv ${IRCON_D}
-fi
-ln -sfv ${MYDIR}/irconf.d/* ${IRCONF_D}
-
 # activate-exec.sh
-ln -s ${VIRTUAL_ENV}/common_python/activate-exec.sh ${HOMEBIN}
+ln -sv ${VIRTUAL_ENV}/common_python/activate-exec.sh ${HOMEBIN}
 
 # crontab (auto boot)
 #cd ${MYDIR}
 #crontab -l ${HOME}/tmp/crontab.bak
 #crontab ${CRONTAB_FILE}
-
