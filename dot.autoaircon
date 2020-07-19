@@ -7,7 +7,7 @@ token = token_fAgsMSNhR9hCJOKm
 
 [aircon]
 dev_name = aircon
-button_header = on_hot_auto_
+button_header = on_cool_auto_
 interval_min = 40
 
 [ir]

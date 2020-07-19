@@ -129,7 +129,8 @@ class ParamClient(TcpCmdClient):
 
 class Aircon(IrSendCmdClient):
     DEF_DEV = 'aircon'
-    DEF_BHDR = 'on_hot_auto_'
+    # DEF_BHDR = 'on_hot_auto_'
+    DEF_BHDR = 'on_cool_auto_'
     DEF_IR_HOST = 'localhost'
 
     RTEMP_MIN = 20

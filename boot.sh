@@ -31,7 +31,8 @@ NAME_AUTOAIRCON="AutoAirconServer"
 LOG_AUTOAIRCON=${LOGDIR}/${NAME_AUTOAIRCON}.log
 PID_AUTOAIRCON=`pgrep -f python.\*${NAME_AUTOAIRCON}.py`
 ts_echo "PID_AUTOAIRCON=${PID_AUTOAIRCON}"
-TARGET_TEMP=25
+#TARGET_TEMP=25
+TARGET_TEMP=28
 
 if [ X$PID_PIGPIOD = X ]; then
     ts_echo "start pigpiod"
