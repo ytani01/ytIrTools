@@ -61,6 +61,6 @@ fi
 cd ${BINDIR}
 echo "[" `pwd` "]"
 
-for f in ir-analyze ir-send IrAnalyze.py IrSendCmdServer.py IrSendCmdClient.py AutoAirconServer.py boot.sh dyson.sh dyson-temp.sh tv-light-level.sh ; do
+for f in ir-analyze ir-send IrAnalyze.py IrSendCmdServer.py IrSendCmdClient.py AutoAirconServer.py boot.sh dyson.sh dyson-temp.sh tv-light-level.sh ball-lamp.sh; do
     ln -sfv ${MYDIR}/$f ${BINDIR}/$f
 done
