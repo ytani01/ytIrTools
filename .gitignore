@@ -2,8 +2,8 @@
 *.swp
 \#*
 .#*
-*.b#*
-*.s#*
+*.b*
+*.s*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
