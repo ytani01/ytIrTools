@@ -1,6 +1,7 @@
 *~
 \#*
 .#*
+*.b#*
 *.s#*
 
 # Byte-compiled / optimized / DLL files
