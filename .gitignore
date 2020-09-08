@@ -2,8 +2,8 @@
 *.swp
 \#*
 .#*
-pcb/*/*.b*
-pcb/*/*.s*
+*.b#[0-9]
+*.s#[0-9]
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
