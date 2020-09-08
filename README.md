@@ -52,7 +52,7 @@ bash < \(curl -sL https://raw.githubusercontent.com/node-red/linux-installers/ma
 
 下記のページの回路を使うと、強力な赤外線信号を広範囲に送信できます。
 
-* [ESP-WROOM-02で赤外線学習リモコン](https://github.com/Goji2100/IRServer)
+* [IRRC32(IRServer32) - ESP32で赤外線学習リモコン](https://github.com/Goji2100/IRRC32)
 
 
 ## Comands
