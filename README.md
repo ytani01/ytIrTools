@@ -247,6 +247,6 @@ Options:
 ## References
 
 * [pigpio](http://abyz.me.uk/rpi/pigpio/)
-* [ESP-WROOM-02で赤外線学習リモコン](https://github.com/Goji2100/IRServer)
+* [IRRC32(IRServer32) - ESP32で赤外線学習リモコン](https://github.com/Goji2100/IRRC32)
 * [irdb](http://irdb.tk/)
 * [Codes for IR Remotes (for YTF IR Bridge)](https://github.com/arendst/Tasmota/wiki/Codes-for-IR-Remotes-(for-YTF-IR-Bridge))
