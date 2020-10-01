@@ -3,6 +3,10 @@
 # (c) 2019 Yoichi Tanibayashi
 #
 MYNAME=`basename $0`
+MYDIR=`dirname $0`
+
+export PATH=${MYDIR}:${PATH}
+
 
 DATE_FMT="%Y/%m/%d %H:%M:%S"
 ts_echo () {
