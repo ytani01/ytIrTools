@@ -2,6 +2,11 @@
 #
 # (c) 2020 Yoichi Tanibayashi
 #
+MYNAME=`basename $0`
+MYDIR=`dirname $0`
+
+export PATH=$MYDIR:$PATH
+
 GITNAME="ytIrTools"
 
 . ${HOME}/bin/activate-${GITNAME}
