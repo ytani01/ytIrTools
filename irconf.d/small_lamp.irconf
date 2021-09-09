@@ -14,19 +14,18 @@
   },
   "macro": {
     "[prefix]": "-00FF",
-    "[suffixA]": "D /*/",
-    "[suffixB]": "F /*/",
-    "[suffixC]": "5 /*/"
+    "[suffix]": "/*/",
+    "[null]": ""
   },
   "buttons": {
-    "on":    ["[prefix] A25 [suffixA]", 2],
-    "off":   ["[prefix] E21 [suffixA]", 2],
-    "up":    ["[prefix] 52A [suffixA]", 2],
-    "down":  ["[prefix] 4AB [suffixC]", 2],
-    "white": ["[prefix] 10E [suffixB]", 2],
-    "red":   ["[prefix] 22D [suffixA]", 2],
-    "green": ["[prefix] 02F [suffixA]", 2],
-    "blue":  ["[prefix] C23 [suffixA]", 2],
+    "on":    ["[prefix] A25D [suffix]", 3],
+    "off":   ["[prefix] E21D [suffix]", 3],
+    "up":    ["[prefix] 52AD [suffix]", 3],
+    "down":  ["[prefix] 4AB5 [suffix]", 3],
+    "white": ["[prefix] 10EF [suffix]", 3],
+    "red":   ["[prefix] 22DD [suffix]", 3],
+    "green": ["[prefix] 02FD [suffix]", 3],
+    "blue":  ["[prefix] C23D [suffix]", 3],
     "end of buttons": ""
   }
 }
