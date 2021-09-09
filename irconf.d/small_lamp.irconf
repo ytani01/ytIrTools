@@ -1,0 +1,32 @@
+{
+  "comment": "Small lamp",
+  "dev_name": ["small_lamp"],
+  "format":   "NEC",
+  "T":        573,
+  "sym_tbl": {
+    "-":      [[16, 8]],
+    "=":      [],
+    "0":      [[1, 1]],
+    "1":      [[1, 3]],
+    "/":      [[1, 73], [1, 896]],
+    "*":      [[16, 4]],
+    "?":      []
+  },
+  "macro": {
+    "[prefix]": "-00FF",
+    "[suffixA]": "D /*/",
+    "[suffixB]": "F /*/",
+    "[suffixC]": "5 /*/"
+  },
+  "buttons": {
+    "on":    ["[prefix] A25 [suffixA]", 2],
+    "off":   ["[prefix] E21 [suffixA]", 2],
+    "up":    ["[prefix] 52A [suffixA]", 2],
+    "down":  ["[prefix] 4AB [suffixC]", 2],
+    "white": ["[prefix] 10E [suffixB]", 2],
+    "red":   ["[prefix] 22D [suffixA]", 2],
+    "green": ["[prefix] 02F [suffixA]", 2],
+    "blue":  ["[prefix] C23 [suffixA]", 2],
+    "end of buttons": ""
+  }
+}
