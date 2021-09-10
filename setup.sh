@@ -4,7 +4,7 @@
 #
 GITS="ytMQTT common_python"
 CMDS="IrAnalyze.py IrSendCmdServer.py IrSendCmdClient.py AutoAirconServer.py"
-BINCMDS="boot.sh ir-analyze ir-send dyson.sh dyson-temp.sh tv-light-level.sh"
+BINCMDS="boot-ir.sh ir-analyze ir-send dyson.sh dyson-temp.sh tv-light-level.sh"
 
 echo "GITS=${GITS}"
 echo "CMDS=${CMDS}"
