@@ -9845,7 +9845,7 @@ Blank/White
 <part name="LED6" library="adafruit" deviceset="LED" device="3MM"/>
 <part name="LED7" library="adafruit" deviceset="LED" device="3MM"/>
 <part name="LED8" library="adafruit" deviceset="LED" device="3MM"/>
-<part name="Q2" library="adafruit" deviceset="MOSFET-N" device="GDS_TO220V"/>
+<part name="Q2" library="adafruit" deviceset="MOSFET-N" device="GDS_TO220V" value="2SK4017"/>
 <part name="R5" library="rcl" library_urn="urn:adsk.eagle:library:334" deviceset="R-US_" device="0204/5" package3d_urn="urn:adsk.eagle:package:23488/1" value="10Ω"/>
 <part name="R6" library="rcl" library_urn="urn:adsk.eagle:library:334" deviceset="R-US_" device="0204/5" package3d_urn="urn:adsk.eagle:package:23488/1" value="10Ω"/>
 <part name="C4" library="rcl" library_urn="urn:adsk.eagle:library:334" deviceset="C-EU" device="025-025X050" package3d_urn="urn:adsk.eagle:package:23629/2" value="47uF"/>
