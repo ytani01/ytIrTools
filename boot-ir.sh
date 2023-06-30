@@ -32,6 +32,7 @@ PID_IRSENDSERVER=`pgrep -f python.\*${NAME_IRSENDSERVER}.py`
 ts_echo "PID_IRSENDSERVER=${PID_IRSENDSERVER}"
 
 NAME_AUTOAIRCON="AutoAirconServer"
+PARAM_AUTOAIRCON="--mqtt_svr mqtt.ytani.net"
 LOG_AUTOAIRCON=${LOGDIR}/${NAME_AUTOAIRCON}.log
 PID_AUTOAIRCON=`pgrep -f python.\*${NAME_AUTOAIRCON}.py`
 ts_echo "PID_AUTOAIRCON=${PID_AUTOAIRCON}"
@@ -61,7 +62,7 @@ if [ X$PID_AUTOAIRCON = X ]; then
 	mv -fv ${LOG_AUTOAIRCON} ${LOG_AUTOAIRCON}.1
     fi
     ts_echo "start ${NAME_AUTOAIRCON}"
-    ${NAME_AUTOAIRCON}.py ${TARGET_TEMP} > ${LOG_AUTOAIRCON} 2>&1 &
+    ${NAME_AUTOAIRCON}.py $PARAM_AUTOAIRCON $TARGET_TEMP > $LOG_AUTOAIRCON 2>&1 &
 fi
 
 ts_echo "${MYNAME}: end"

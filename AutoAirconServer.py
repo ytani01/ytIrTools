@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# (c) 2019 Yoichi Tanibayashi
+# (c) 2019,2020,2021,2022,2023 Yoichi Tanibayashi
 #
 """
 Auto aircon server
@@ -10,11 +10,11 @@ Auto aircon server
   rtemp := remocon temp
 """
 __author__ = 'Yoichi Tanibayashi'
-__date__   = '2019'
+__date__   = '2023'
 
 from TcpCmdServer import Cmd, CmdServerApp
 from TcpCmdClient import TcpCmdClient
-from Mqtt import BeebotteSubscriber
+from Mqtt import MqttSubscriber, BeebotteSubscriber
 from IrSendCmdClient import IrSendCmdClient
 
 import queue
@@ -296,8 +296,11 @@ class AutoAirconCmd(Cmd):
         self._dbg = debug
         self._log = get_logger(__class__.__name__, self._dbg)
         self._log.debug('init_param=%s, port=%s', init_param, port)
+
         if init_param is None:
             init_param = {}
+
+        self._mqtt_svr = init_param['mqtt_svr']
 
         # コマンド追加
         self.add_cmd('on', None, self.cmd_q_on, 'Auto control ON')
@@ -353,13 +356,20 @@ class AutoAirconCmd(Cmd):
         self._log.debug('_pp.param=%s', self._pp.param)
 
         '''
-        self._bbt = BeebotteSubscriber(self.cb_bbt,
+        self._mqtt = BeebotteSubscriber(self.cb_mqtt,
                                        [ self._temp_topic ], self._temp_token,
                                        debug=self._dbg)
         '''
-        self._bbt = BeebotteSubscriber(BeebotteSubscriber.CB_QPUT,
-                                       [ self._temp_topic ], self._temp_token,
-                                       debug=self._dbg)
+        if self._mqtt_svr == '':
+            self._mqtt = BeebotteSubscriber(BeebotteSubscriber.CB_QPUT,
+                                            [ self._temp_topic ],
+                                            self._temp_token,
+                                            debug=self._dbg)
+        else:
+            self._mqtt = MqttSubscriber(MqttSubscriber.CB_QPUT,
+                                        [ self._temp_topic ], self._temp_token,
+                                        host=self._mqtt_svr,
+                                        debug=self._dbg)
         self._tempq = queue.Queue()
 
         self._aircon = Aircon(aircon_dev, aircon_bhdr, ir_host,
@@ -378,7 +388,7 @@ class AutoAirconCmd(Cmd):
         """
         self._log.debug('')
 
-        self._bbt.start()
+        self._mqtt.start()
 
         self._aircon.on()
 
@@ -400,15 +410,22 @@ class AutoAirconCmd(Cmd):
                 break
 
             # BeebotteからMQTTで温度を取得
-            ret = self._bbt.recv_data()
+            ret = self._mqtt.recv_data()
             if ret is None:
                 continue
 
+            self._log.info('ret=%s', ret)
+            
             (self._temp, topic, ts_msec) = ret
+
+            if self._mqtt_svr == '':
+                ts = ts_msec / 1000
+            else:
+                ts = ts_msec
+
             self._log.info('_temp=%.3f, ts=%s',
-                           self._temp, self._bbt.ts2datestr(ts_msec))
+                           self._temp, ts)
             self._temp = float('%.2f' % self._temp)
-            ts = ts_msec / 1000
 
             # 温度履歴に追加
             self._temp_hist.add(self._temp, ts)
@@ -456,7 +473,7 @@ class AutoAirconCmd(Cmd):
 
     def end(self):
         self._log.debug('')
-        self._bbt.end()
+        self._mqtt.end()
         if self._active:
             self.stop_main()
         super().end()
@@ -465,8 +482,8 @@ class AutoAirconCmd(Cmd):
     def stop_main(self):
         self._log.debug('')
         self._active = False
-        # self._bbt.publish(self._temp_topic, self._temp)
-        self._bbt.send_data(self._temp, [ self._temp_topic ])
+        # self._mqtt.publish(self._temp_topic, self._temp)
+        self._mqtt.send_data(self._temp, [ self._temp_topic ])
         super().stop_main()
         self._log.debug('done')
 
@@ -694,7 +711,7 @@ class AutoAirconCmd(Cmd):
         if len(args) == 1:
             return self.RC_OK, self._ttemp
 
-        # self._i = 0
+        self._i /= 2
 
         try:
             self._ttemp = float(args[1])
@@ -757,15 +774,19 @@ Auto Aircon Server
 @click.argument('target_temp', type=float)
 @click.option('--port', '-p', 'port', type=int,
               help='port numbe')
+@click.option('--mqtt_svr', 'mqtt_svr', type=str, default='',
+              help='MQTT server')
 @click.option('--debug', '-d', 'debug', is_flag=True, default=False,
               help='debug flag')
-def main(target_temp, port, debug):
+def main(target_temp, port, mqtt_svr, debug):
     logger = get_logger(__name__, debug)
     logger.debug('target_temp=%s, port=%s', target_temp, port)
+    logger.debug('mqtt_svr=%s', mqtt_svr)
 
     logger.info('start')
 
-    app = CmdServerApp(AutoAirconCmd, init_param={'ttemp': target_temp},
+    app = CmdServerApp(AutoAirconCmd,
+                       init_param={'ttemp': target_temp, 'mqtt_svr': mqtt_svr},
                        port=port,
                        debug=debug)
     try:
