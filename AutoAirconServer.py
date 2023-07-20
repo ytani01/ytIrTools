@@ -562,9 +562,14 @@ class AutoAirconCmd(Cmd):
 
         kd_d = -self._pp.param['kd'] * d_
 
-        pid = kp_p + ki_i + kd_d
-        self._log.info('pid=%.2f <= (kp_p, ki_i, kd_d) = (%.2f, %.2f, %.2f)',
-                       pid, kp_p, ki_i, kd_d)
+        # 極端な温度変更を避けるため
+        kpd = kp_p + kd_d
+        kpd = max(min(kpd, 2), -2)
+
+        # pid = kp_p + ki_i + kd_d
+        pid = ki_i + kpd
+        self._log.info('pid=%.2f <= (kp_p,ki_i,kd_d,kpd)=(%.2f,%.2f,%.2f,%.2f)',
+                       pid, kp_p, ki_i, kd_d, kpd)
 
         self._param_cl.send_param({
             'pid': pid,
