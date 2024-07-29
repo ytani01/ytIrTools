@@ -97,6 +97,7 @@
     "on_hot_natural_23": "[prefix] [on]  [23a] [hot]  [win_natural] D F/",
 
     "on_cool_strong_23": "[prefix] [on]  [23a] [cool] [win_strong]  B [23b]/",
+    "on_cool_strong_20": "[prefix] [on]  [20a] [cool] [win_strong]  B [20b]/",
 
     "on_cool_auto_30":   "[prefix] [on]  [30a] [cool] [win_auto]    7 [30b]/",
     "on_cool_auto_29":   "[prefix] [on]  [29a] [cool] [win_auto]    7 [29b]/",

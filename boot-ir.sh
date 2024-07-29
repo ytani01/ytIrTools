@@ -2,6 +2,8 @@
 #
 # (c) 2019 Yoichi Tanibayashi
 #
+MQTT_SVR=remocon0.ytani.net
+
 MYNAME=`basename $0`
 MYDIR=`dirname $0`
 
@@ -32,7 +34,7 @@ PID_IRSENDSERVER=`pgrep -f python.\*${NAME_IRSENDSERVER}.py`
 ts_echo "PID_IRSENDSERVER=${PID_IRSENDSERVER}"
 
 NAME_AUTOAIRCON="AutoAirconServer"
-PARAM_AUTOAIRCON="--mqtt_svr mqtt.ytani.net"
+PARAM_AUTOAIRCON="--mqtt_svr $MQTT_SVR"
 LOG_AUTOAIRCON=${LOGDIR}/${NAME_AUTOAIRCON}.log
 PID_AUTOAIRCON=`pgrep -f python.\*${NAME_AUTOAIRCON}.py`
 ts_echo "PID_AUTOAIRCON=${PID_AUTOAIRCON}"

@@ -563,8 +563,9 @@ class AutoAirconCmd(Cmd):
         kd_d = -self._pp.param['kd'] * d_
 
         # 極端な温度変更を避けるため
+        KPD_MAX = 3
         kpd = kp_p + kd_d
-        kpd = max(min(kpd, 2), -2)
+        kpd = max(min(kpd, KPD_MAX), -KPD_MAX)
 
         # pid = kp_p + ki_i + kd_d
         pid = ki_i + kpd
