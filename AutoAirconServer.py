@@ -133,7 +133,7 @@ class Aircon(IrSendCmdClient):
     # DEF_BHDR = 'on_cool_auto_'
     DEF_IR_HOST = 'localhost'
 
-    RTEMP_MIN = 20
+    RTEMP_MIN = 18
     RTEMP_MAX = 30
 
     INTERVAL_MIN = 40  # set_temp interval sec
